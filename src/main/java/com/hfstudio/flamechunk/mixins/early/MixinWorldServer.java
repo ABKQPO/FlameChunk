@@ -51,6 +51,20 @@ public abstract class MixinWorldServer {
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;updateTick(Lnet/minecraft/world/World;IIILjava/util/Random;)V"))
     private void flamechunk$measureScheduledTick(Block block, World world, int x, int y, int z, Random random) {
+        flamechunk$runScheduledTick(block, world, x, y, z, random);
+    }
+
+    @Redirect(
+        method = "scheduleBlockUpdateWithPriority",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/block/Block;updateTick(Lnet/minecraft/world/World;IIILjava/util/Random;)V"))
+    private void flamechunk$measureImmediateScheduledTick(Block block, World world, int x, int y, int z,
+        Random random) {
+        flamechunk$runScheduledTick(block, world, x, y, z, random);
+    }
+
+    private void flamechunk$runScheduledTick(Block block, World world, int x, int y, int z, Random random) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
             : PerformanceSampler
@@ -117,9 +131,6 @@ public abstract class MixinWorldServer {
             return spawner.findChunksForSpawning(world, hostile, peaceful, animals);
         } finally {
             PerformanceSampler.leaveWork(work);
-            if (start != 0L) {
-                PerformanceSampler.recordGlobal(TickCategory.MOB_SPAWNING, world, System.nanoTime() - start);
-            }
         }
     }
 }

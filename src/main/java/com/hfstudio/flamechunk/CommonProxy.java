@@ -3,6 +3,7 @@ package com.hfstudio.flamechunk;
 import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.SnapshotPacket;
+import com.hfstudio.flamechunk.common.network.packet.UnknownStackDetailsPacket;
 import com.hfstudio.flamechunk.common.network.packet.WeakChunkSnapshotPacket;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -27,6 +28,8 @@ public class CommonProxy {
     public void handleWeakChunkSnapshot(WeakChunkSnapshotPacket packet) {}
 
     public void handleSnapshot(SnapshotPacket packet) {}
+
+    public void handleUnknownStackDetails(UnknownStackDetailsPacket packet) {}
 
     public void handleClear(ClearSnapshotPacket packet) {}
 }

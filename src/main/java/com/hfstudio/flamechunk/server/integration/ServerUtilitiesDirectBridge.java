@@ -8,6 +8,8 @@ import com.hfstudio.flamechunk.FlameChunk;
 import cpw.mods.fml.common.Optional;
 import serverutils.data.ClaimedChunk;
 import serverutils.data.ClaimedChunks;
+import serverutils.lib.data.ForgeTeam;
+import serverutils.lib.data.Universe;
 import serverutils.lib.math.ChunkDimPos;
 import serverutils.lib.util.permission.DefaultPermissionLevel;
 import serverutils.lib.util.permission.PermissionAPI;
@@ -71,6 +73,27 @@ public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
         } catch (LinkageError error) {
             FlameChunk.LOG.warn("ServerUtilities claim API is incompatible", error);
             return "unknown";
+        }
+    }
+
+    @Override
+    @Optional.Method(modid = "serverutilities")
+    public String describeTeam(String teamId) {
+        if (teamId == null || teamId.isEmpty() || !Universe.loaded()) {
+            return null;
+        }
+        try {
+            ForgeTeam team = Universe.get()
+                .getTeam(teamId);
+            return team == null || !team.isValid() ? null
+                : team.getTitle()
+                    .getUnformattedText();
+        } catch (RuntimeException exception) {
+            FlameChunk.LOG.warn("ServerUtilities team lookup failed", exception);
+            return null;
+        } catch (LinkageError error) {
+            FlameChunk.LOG.warn("ServerUtilities team API is incompatible", error);
+            return null;
         }
     }
 }

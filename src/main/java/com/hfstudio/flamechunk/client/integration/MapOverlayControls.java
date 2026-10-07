@@ -5,10 +5,12 @@ import java.util.Collections;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.StatCollector;
 
 import com.hfstudio.flamechunk.ClientProxy;
 import com.hfstudio.flamechunk.FlameChunk;
@@ -58,8 +60,9 @@ public class MapOverlayControls {
         if (minecraft.theWorld == null || !isServerAvailable()) {
             return;
         }
-        boolean requested = ClientConfig.liveUpdates && !subscriptionDenied;
-        boolean worldHotspots = ClientConfig.worldOverlayEnabled && ClientMapIntegrations.hasMapIntegration();
+        boolean hasMapIntegration = ClientMapIntegrations.hasMapIntegration();
+        boolean requested = ClientConfig.liveUpdates && hasMapIntegration && !subscriptionDenied;
+        boolean worldHotspots = ClientConfig.worldOverlayEnabled && hasMapIntegration;
         if (System.nanoTime() < nextSubscriptionAttemptNanos) {
             return;
         }
@@ -205,6 +208,10 @@ public class MapOverlayControls {
     }
 
     public static void openWeakClearSelection(int dimensionId, int chunkX, int chunkZ) {
+        openWeakClearSelection(dimensionId, chunkX, chunkZ, false);
+    }
+
+    public static void openWeakClearSelection(int dimensionId, int chunkX, int chunkZ, boolean showLoaderControl) {
         List<EntityTypeCount> targets = weakClearTargets(dimensionId, chunkX, chunkZ);
         if (!targets.isEmpty()) {
             Minecraft.getMinecraft()
@@ -214,7 +221,43 @@ public class MapOverlayControls {
                         dimensionId,
                         chunkX,
                         chunkZ,
-                        targets));
+                        targets,
+                        showLoaderControl));
+        }
+    }
+
+    public static void toggleScan() {
+        if (isScanning()) {
+            requestStop();
+        } else if (!hasPendingScan()) {
+            requestScan();
+        }
+    }
+
+    public static String scanMenuLabel() {
+        if (isScanning()) {
+            int percent = Math.round(scanProgress() * 100.0F);
+            return StatCollector.translateToLocalFormatted("flamechunk.client.stop.progress", percent);
+        }
+        return StatCollector
+            .translateToLocal(hasPendingScan() ? "flamechunk.client.scan.pending" : "flamechunk.client.scan");
+    }
+
+    public static void updateScanButton(Iterable<GuiButton> buttons, int buttonId) {
+        if (buttons == null) {
+            return;
+        }
+        boolean scanning = isScanning();
+        boolean pending = hasPendingScan();
+        String label = StatCollector.translateToLocal(
+            scanning ? "flamechunk.client.stop"
+                : pending ? "flamechunk.client.scan.pending" : "flamechunk.client.scan");
+        for (GuiButton button : buttons) {
+            if (button.id == buttonId) {
+                button.displayString = label;
+                button.enabled = scanning || !pending;
+                return;
+            }
         }
     }
 

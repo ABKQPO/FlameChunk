@@ -3,12 +3,15 @@ package com.hfstudio.flamechunk.server.sampler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
 import com.google.common.collect.ImmutableSetMultimap;
@@ -19,6 +22,7 @@ import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
+import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
@@ -26,6 +30,16 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 public class SnapshotBuilder {
+
+    public final ServerUtilitiesBridge serverUtilities;
+
+    public SnapshotBuilder() {
+        this(ServerUtilitiesBridge.NONE);
+    }
+
+    public SnapshotBuilder(ServerUtilitiesBridge serverUtilities) {
+        this.serverUtilities = serverUtilities == null ? ServerUtilitiesBridge.NONE : serverUtilities;
+    }
 
     public ScanSnapshot build(int durationSeconds, long sampledTicks,
         Int2ObjectOpenHashMap<PerformanceSampler.DimensionTimings> dimensions) {
@@ -48,15 +62,32 @@ public class SnapshotBuilder {
         DimensionSnapshot[] snapshots = new DimensionSnapshot[dimensionValues.size()];
         for (int index = 0; index < dimensionValues.size(); index++) {
             PerformanceSampler.DimensionTimings dimension = dimensionValues.get(index);
+            Map<String, String> teamNames = new HashMap<>();
             ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> forcedChunks = ForgeChunkManager
                 .getPersistentChunksFor(dimension.world);
             Long2ObjectOpenHashMap<ChunkTiming> chunksByPosition = new Long2ObjectOpenHashMap<>(dimension.chunks);
             for (ChunkCoordIntPair forcedChunk : forcedChunks.keySet()) {
+                if (chunksByPosition.containsKey(chunkKey(forcedChunk.chunkXPos, forcedChunk.chunkZPos))) {
+                    continue;
+                }
                 if (chunksByPosition.size() >= ServerConfig.maxChunksPerDimension) {
                     break;
                 }
-                long key = ((long) forcedChunk.chunkXPos << 32) ^ (forcedChunk.chunkZPos & 0xffffffffL);
-                if (!chunksByPosition.containsKey(key)) {
+                chunksByPosition.put(chunkKey(forcedChunk.chunkXPos, forcedChunk.chunkZPos), new ChunkTiming());
+            }
+            if (dimension.world.getChunkProvider() instanceof ChunkProviderServer chunkProvider) {
+                int loadedChunkLimit = Math.min(ServerConfig.maxChunksPerDimension, chunkLimitPerDimension);
+                for (Chunk chunk : chunkProvider.func_152380_a()) {
+                    if (chunk == null) {
+                        continue;
+                    }
+                    long key = chunkKey(chunk.xPosition, chunk.zPosition);
+                    if (chunksByPosition.containsKey(key)) {
+                        continue;
+                    }
+                    if (chunksByPosition.size() >= loadedChunkLimit) {
+                        break;
+                    }
                     chunksByPosition.put(key, new ChunkTiming());
                 }
             }
@@ -93,7 +124,7 @@ public class SnapshotBuilder {
                 int chunkX = (int) (key >> 32);
                 int chunkZ = (int) key;
                 ChunkCoordIntPair position = new ChunkCoordIntPair(chunkX, chunkZ);
-                TicketMetadata ticket = ticketMetadata(forcedChunks, position);
+                TicketMetadata ticket = ticketMetadata(forcedChunks, position, serverUtilities, teamNames);
                 List<ChunkTypeTiming> typeTimings = new ArrayList<>(16);
                 typeTimings.addAll(
                     entry.getValue()
@@ -162,6 +193,10 @@ public class SnapshotBuilder {
         return counts;
     }
 
+    public static long chunkKey(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL);
+    }
+
     public static byte loadLevel(World world, int chunkX, int chunkZ) {
         if (world == null || world.getChunkProvider() == null) {
             return 32;
@@ -171,7 +206,14 @@ public class SnapshotBuilder {
     }
 
     public static TicketMetadata ticketMetadata(
-        ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair position) {
+        ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair position,
+        ServerUtilitiesBridge serverUtilities) {
+        return ticketMetadata(tickets, position, serverUtilities, null);
+    }
+
+    public static TicketMetadata ticketMetadata(
+        ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair position,
+        ServerUtilitiesBridge serverUtilities, Map<String, String> teamNames) {
         if (!tickets.containsKey(position)) {
             return TicketMetadata.NONE;
         }
@@ -184,26 +226,14 @@ public class SnapshotBuilder {
         if (selected == null) {
             return TicketMetadata.NONE;
         }
-        if (selected.isPlayerTicket()) {
-            String player = selected.getPlayerName();
-            return new TicketMetadata(2, player == null || player.length() == 0 ? "player" : "player:" + player);
-        }
-        Entity entity = selected.getEntity();
-        if (entity != null) {
-            return new TicketMetadata(
-                3,
-                "entity:" + entity.getClass()
-                    .getSimpleName());
-        }
-        String modId = selected.getModId();
-        String type = selected.getType() == null ? "unknown"
-            : selected.getType()
-                .name()
-                .toLowerCase(Locale.ENGLISH);
-        if (modId == null || modId.length() == 0) {
-            return new TicketMetadata(4, type);
-        }
-        return new TicketMetadata(4, trimTicketSource(modId + ":" + type));
+        return new TicketMetadata(
+            LoaderTicketSource.code(selected),
+            LoaderTicketSource.describe(selected, serverUtilities, teamNames));
+    }
+
+    public static TicketMetadata ticketMetadata(
+        ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair position) {
+        return ticketMetadata(tickets, position, ServerUtilitiesBridge.NONE);
     }
 
     public static int ticketPriority(ForgeChunkManager.Ticket ticket) {
@@ -214,7 +244,7 @@ public class SnapshotBuilder {
     }
 
     public static String trimTicketSource(String value) {
-        return value.length() <= 64 ? value : value.substring(0, 64);
+        return LoaderTicketSource.trim(value);
     }
 
     public static class TicketMetadata {

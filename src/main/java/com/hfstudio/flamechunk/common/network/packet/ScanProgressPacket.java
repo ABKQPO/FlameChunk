@@ -21,6 +21,7 @@ public class ScanProgressPacket implements IMessage {
     public static final int SUBSCRIBED = 9;
     public static final int UNSUBSCRIBED = 10;
     public static final int SUBSCRIPTION_DENIED = 11;
+    public static final int SCAN_INTERRUPTED = 12;
 
     public long elapsedTicks;
     public long totalTicks;
@@ -57,7 +58,7 @@ public class ScanProgressPacket implements IMessage {
         if (magic != NetworkHandler.PROTOCOL_MAGIC) {
             return;
         }
-        if (total == 0L && elapsed >= 0L && elapsed <= SUBSCRIPTION_DENIED && isNetworkStatus((int) elapsed)) {
+        if (total == 0L && elapsed >= 0L && elapsed <= SCAN_INTERRUPTED && isNetworkStatus((int) elapsed)) {
             status = (int) elapsed;
             statusMessage = true;
             valid = true;
@@ -76,6 +77,6 @@ public class ScanProgressPacket implements IMessage {
     }
 
     public static boolean isNetworkStatus(int value) {
-        return value >= QUEUED && value <= WEAK_SCAN_DISABLED || value >= SUBSCRIBED && value <= SUBSCRIPTION_DENIED;
+        return value >= QUEUED && value <= WEAK_SCAN_DISABLED || value >= SUBSCRIBED && value <= SCAN_INTERRUPTED;
     }
 }

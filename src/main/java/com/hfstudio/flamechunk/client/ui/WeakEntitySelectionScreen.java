@@ -17,28 +17,37 @@ public class WeakEntitySelectionScreen extends GuiScreen {
     public static final int PREVIOUS_BUTTON = -1;
     public static final int NEXT_BUTTON = -2;
     public static final int CANCEL_BUTTON = -3;
+    public static final int LOADER_CONTROL_BUTTON = -4;
 
     public final GuiScreen parent;
     public final int dimensionId;
     public final int chunkX;
     public final int chunkZ;
     public final List<EntityTypeCount> entityTypes;
+    public final boolean showLoaderControl;
     public int page;
 
     public WeakEntitySelectionScreen(GuiScreen parent, int dimensionId, int chunkX, int chunkZ,
         List<EntityTypeCount> entityTypes) {
+        this(parent, dimensionId, chunkX, chunkZ, entityTypes, false);
+    }
+
+    public WeakEntitySelectionScreen(GuiScreen parent, int dimensionId, int chunkX, int chunkZ,
+        List<EntityTypeCount> entityTypes, boolean showLoaderControl) {
         this.parent = parent;
         this.dimensionId = dimensionId;
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.entityTypes = new ArrayList<>(entityTypes);
+        this.showLoaderControl = showLoaderControl;
     }
 
     @Override
     public void initGui() {
         buttonList.clear();
-        int start = page * PAGE_SIZE;
-        int end = Math.min(entityTypes.size(), start + PAGE_SIZE);
+        int pageSize = showLoaderControl ? 6 : PAGE_SIZE;
+        int start = page * pageSize;
+        int end = Math.min(entityTypes.size(), start + pageSize);
         int width = Math.min(260, this.width - 20);
         int left = (this.width - width) / 2;
         for (int index = start; index < end; index++) {
@@ -83,6 +92,16 @@ public class WeakEntitySelectionScreen extends GuiScreen {
                 72,
                 20,
                 StatCollector.translateToLocal("flamechunk.client.map.cancel")));
+        if (showLoaderControl) {
+            buttonList.add(
+                new GuiButton(
+                    LOADER_CONTROL_BUTTON,
+                    (this.width - 160) / 2,
+                    this.height - 50,
+                    160,
+                    20,
+                    StatCollector.translateToLocal("flamechunk.client.map.loader.toggle")));
+        }
     }
 
     @Override
@@ -95,6 +114,8 @@ public class WeakEntitySelectionScreen extends GuiScreen {
             initGui();
         } else if (button.id == CANCEL_BUTTON) {
             mc.displayGuiScreen(parent);
+        } else if (button.id == LOADER_CONTROL_BUTTON) {
+            MapOverlayControls.confirmLoaderToggle(parent, dimensionId, chunkX, chunkZ);
         } else if (button.id >= 0 && button.id < entityTypes.size()) {
             EntityTypeCount entityType = entityTypes.get(button.id);
             MapOverlayControls.confirmWeakClear(parent, dimensionId, chunkX, chunkZ, entityType.getTypeId());

@@ -4,20 +4,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
 
 import com.hfstudio.flamechunk.FlameChunk;
+import com.hfstudio.flamechunk.api.client.map.MapOverlayApi;
 import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
+import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
+import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
+import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 import cpw.mods.fml.common.Optional;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.IClientPlugin;
 import journeymap.api.v2.client.display.DisplayType;
 import journeymap.api.v2.client.display.PolygonOverlay;
+import journeymap.api.v2.client.event.FullscreenDisplayEvent.CustomToolbarEvent;
+import journeymap.api.v2.client.event.FullscreenRenderEvent;
 import journeymap.api.v2.client.event.PopupMenuEvent.FullscreenPopupMenuEvent;
+import journeymap.api.v2.client.fullscreen.CustomToolBarBuilder;
+import journeymap.api.v2.client.fullscreen.IThemeButton;
+import journeymap.api.v2.client.fullscreen.IThemeToolBar;
 import journeymap.api.v2.client.fullscreen.ModPopupMenu;
 import journeymap.api.v2.client.model.MapPolygon;
 import journeymap.api.v2.client.model.ShapeProperties;
@@ -31,8 +45,13 @@ import journeymap.api.v2.common.util.BlockPos;
 public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
 
     public static final String GROUP_NAME = "flamechunk.heatmap";
-    public static volatile JourneyMap6Adapter activeInstance;
     public IClientAPI api;
+    public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<PolygonOverlay>> overlaysByPosition = new Int2ObjectOpenHashMap<>();
+    public MapOverlayModel previousModel = ClientMapOverlayState.emptyModel();
+    public long previousDisplaySettings = displaySettings();
+    public IThemeToolBar toolbar;
+    public IThemeButton scanButton;
+    public int previousScanButtonState = Integer.MIN_VALUE;
 
     @Override
     @Optional.Method(modid = "journeymap_api")
@@ -44,9 +63,12 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     @Optional.Method(modid = "journeymap_api")
     public void initialize(@NotNull IClientAPI value) {
         api = value;
-        activeInstance = this;
+        MapOverlayApi.register(this);
         FullscreenEventRegistry.FULLSCREEN_POPUP_MENU_EVENT.subscribe(this, FlameChunk.MODID, this::addPopupMenuItems);
+        FullscreenEventRegistry.CUSTOM_TOOLBAR_UPDATE_EVENT.subscribe(this, FlameChunk.MODID, this::addToolbar);
+        FullscreenEventRegistry.FULLSCREEN_RENDER_EVENT.subscribe(this, FlameChunk.MODID, this::renderScanProgress);
         publish(ClientMapOverlayState.get());
+        FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");
         MapOverlayControls.requestWeakSnapshot();
     }
 
@@ -59,9 +81,7 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         final int mapDimensionId = event.getFullscreen()
             .getUiState().dimension;
         ModPopupMenu popupMenu = event.getPopupMenu();
-        popupMenu.addMenuItem(
-            StatCollector.translateToLocal("flamechunk.client.journeymap.scan"),
-            position -> MapOverlayControls.requestScan());
+        popupMenu.addMenuItem(MapOverlayControls.scanMenuLabel(), position -> MapOverlayControls.toggleScan());
         popupMenu.addMenuItem(
             StatCollector.translateToLocal("flamechunk.client.journeymap.clear"),
             position -> MapOverlayControls.clear());
@@ -82,59 +102,222 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         });
     }
 
-    public static MapOverlaySink createBridge() {
-        return new MapOverlaySink() {
+    @Optional.Method(modid = "journeymap_api")
+    public void addToolbar(CustomToolbarEvent event) {
+        if (event.getFullscreen() == null || event.getFullscreen()
+            .getScreen() == null) {
+            return;
+        }
+        CustomToolBarBuilder builder = event.getCustomToolBarBuilder();
+        scanButton = builder
+            .getThemeButton("search", (ResourceLocation) null, button -> MapOverlayControls.toggleScan());
+        scanButton.setLabels(MapOverlayControls.scanMenuLabel(), MapOverlayControls.scanMenuLabel());
+        scanButton.setTooltip(StatCollector.translateToLocal("flamechunk.client.scan"));
+        IThemeButton clearButton = builder
+            .getThemeButton("close", (ResourceLocation) null, button -> MapOverlayControls.clear());
+        String clearLabel = StatCollector.translateToLocal("flamechunk.client.journeymap.clear");
+        clearButton.setLabels(clearLabel, clearLabel);
+        clearButton.setTooltip(clearLabel);
+        toolbar = builder.getNewToolbar(scanButton, clearButton);
+        toolbar.setLayoutHorizontal(
+            6,
+            event.getFullscreen()
+                .getScreen().height - 26,
+            4,
+            false);
+        previousScanButtonState = Integer.MIN_VALUE;
+        updateScanButton();
+    }
 
-            @Override
-            public void publish(MapOverlayModel model) {
-                JourneyMap6Adapter adapter = activeInstance;
-                if (adapter != null) {
-                    adapter.publish(model);
-                }
-            }
+    @Optional.Method(modid = "journeymap_api")
+    public void renderScanProgress(FullscreenRenderEvent event) {
+        if (toolbar == null || event.getFullscreen() == null) {
+            return;
+        }
+        updateScanButton();
+        if (!MapOverlayControls.isScanning()) {
+            return;
+        }
+        GuiScreen screen = event.getFullscreen()
+            .getScreen();
+        if (screen == null || Minecraft.getMinecraft().currentScreen != screen) {
+            return;
+        }
+        int width = toolbar.getWidth();
+        int x = toolbar.getX();
+        int y = toolbar.getY() - 6;
+        float progress = Math.max(0.0F, Math.min(1.0F, MapOverlayControls.scanProgress()));
+        Gui.drawRect(x, y, x + width, y + 3, ColorUtils.PANEL_BACKGROUND.getColor());
+        int progressWidth = Math.round(width * progress);
+        if (progressWidth > 0) {
+            Gui.drawRect(x, y, x + progressWidth, y + 3, ColorUtils.HEAT_LOW.getColor());
+        }
+    }
 
-            @Override
-            public void clear() {
-                JourneyMap6Adapter adapter = activeInstance;
-                if (adapter != null) {
-                    adapter.clear();
-                }
-            }
-        };
+    @Optional.Method(modid = "journeymap_api")
+    public void updateScanButton() {
+        if (scanButton == null) {
+            return;
+        }
+        boolean scanning = MapOverlayControls.isScanning();
+        boolean pending = MapOverlayControls.hasPendingScan();
+        int state = scanning ? 1000 + Math.round(MapOverlayControls.scanProgress() * 100.0F) : pending ? -1 : 0;
+        if (state == previousScanButtonState) {
+            return;
+        }
+        String label = MapOverlayControls.scanMenuLabel();
+        scanButton.setLabels(label, label);
+        scanButton.setTooltip(label);
+        scanButton.setEnabled(scanning || !pending);
+        previousScanButtonState = state;
     }
 
     @Override
     @Optional.Method(modid = "journeymap_api")
     public void publish(MapOverlayModel model) {
-        if (api == null || model == null) {
+        if (NavigatorMapBridge.ownsJourneyMap() || api == null || model == null) {
             return;
         }
-        clear();
+        long currentDisplaySettings = displaySettings();
+        boolean refreshAll = previousDisplaySettings != currentDisplaySettings;
+        for (MapOverlayCell previousCell : previousModel.getCells()) {
+            if (model.find(previousCell.getDimensionId(), previousCell.getChunkX(), previousCell.getChunkZ()) == null) {
+                removeOverlay(previousCell.getDimensionId(), previousCell.getChunkX(), previousCell.getChunkZ());
+            }
+        }
         for (MapOverlayCell cell : model.getCells()) {
-            PolygonOverlay overlay = createOverlay(cell);
+            Long2ObjectOpenHashMap<PolygonOverlay> dimensionOverlays = overlaysByPosition.get(cell.getDimensionId());
+            if (dimensionOverlays == null) {
+                dimensionOverlays = new Long2ObjectOpenHashMap<>();
+                overlaysByPosition.put(cell.getDimensionId(), dimensionOverlays);
+            }
+            long positionKey = MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ());
+            PolygonOverlay previousOverlay = dimensionOverlays.get(positionKey);
+            MapOverlayCell previousCell = previousModel.find(cell.getDimensionId(), cell.getChunkX(), cell.getChunkZ());
+            if (!refreshAll && previousOverlay != null
+                && previousCell != null
+                && sameOverlayContent(previousCell, cell)) {
+                continue;
+            }
             try {
-                api.show(overlay);
-            } catch (Exception exception) {
+                if (previousOverlay != null) {
+                    updateOverlay(previousOverlay, cell);
+                    api.show(previousOverlay);
+                } else {
+                    PolygonOverlay overlay = createOverlay(cell);
+                    api.show(overlay);
+                    dimensionOverlays.put(positionKey, overlay);
+                }
+            } catch (Exception | LinkageError exception) {
+                if (previousOverlay != null) {
+                    try {
+                        api.remove(previousOverlay);
+                    } catch (RuntimeException | LinkageError cleanupException) {
+                        exception.addSuppressed(cleanupException);
+                    }
+                }
+                dimensionOverlays.remove(positionKey);
                 FlameChunk.LOG.warn("Unable to show a JourneyMap heatmap overlay", exception);
             }
         }
+        previousModel = model;
+        previousDisplaySettings = currentDisplaySettings;
     }
 
     @Override
     @Optional.Method(modid = "journeymap_api")
     public void clear() {
-        if (api == null) {
+        if (api != null) {
+            try {
+                api.removeAll(FlameChunk.MODID, DisplayType.Polygon);
+            } catch (RuntimeException | LinkageError exception) {
+                FlameChunk.LOG.debug("Unable to remove JourneyMap heatmap overlays", exception);
+            }
+        }
+        overlaysByPosition.clear();
+        previousModel = ClientMapOverlayState.emptyModel();
+        previousDisplaySettings = displaySettings();
+    }
+
+    public static long displaySettings() {
+        long settings = 0L;
+        settings |= ClientConfig.tooltipCoordinates ? 1L : 0L;
+        settings |= ClientConfig.tooltipEntityCount ? 1L << 1 : 0L;
+        settings |= ClientConfig.tooltipTotal ? 1L << 2 : 0L;
+        settings |= ClientConfig.tooltipLoadLevel ? 1L << 3 : 0L;
+        settings |= ClientConfig.tooltipTicketSource ? 1L << 4 : 0L;
+        settings |= ClientConfig.tooltipCategoryNamesShort ? 1L << 5 : 0L;
+        settings |= ClientConfig.tooltipCategoryUnits ? 1L << 6 : 0L;
+        settings |= ClientConfig.showLoaderSources ? 1L << 7 : 0L;
+        int enabledCategories = 0;
+        for (TickCategory category : TickCategory.values()) {
+            if (ClientConfig.tooltipCategories.contains(category)) {
+                enabledCategories |= 1 << category.ordinal();
+            }
+        }
+        return settings | (long) enabledCategories << 8;
+    }
+
+    @Optional.Method(modid = "journeymap_api")
+    public void removeOverlay(int dimensionId, int chunkX, int chunkZ) {
+        Long2ObjectOpenHashMap<PolygonOverlay> dimensionOverlays = overlaysByPosition.get(dimensionId);
+        if (dimensionOverlays == null) {
             return;
         }
-        try {
-            api.removeAll(FlameChunk.MODID, DisplayType.Polygon);
-        } catch (RuntimeException | LinkageError exception) {
-            FlameChunk.LOG.debug("Unable to remove JourneyMap heatmap overlays", exception);
+        long positionKey = MapOverlayModel.key(chunkX, chunkZ);
+        PolygonOverlay overlay = dimensionOverlays.remove(positionKey);
+        if (overlay != null) {
+            api.remove(overlay);
         }
+        if (dimensionOverlays.isEmpty()) {
+            overlaysByPosition.remove(dimensionId);
+        }
+    }
+
+    public static boolean sameOverlayContent(MapOverlayCell first, MapOverlayCell second) {
+        return first.hasSameContent(second);
+    }
+
+    public static boolean sameEntityTypes(List<EntityTypeCount> first, List<EntityTypeCount> second) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (int index = 0; index < first.size(); index++) {
+            var firstType = first.get(index);
+            var secondType = second.get(index);
+            if (firstType.getCount() != secondType.getCount() || !firstType.getTypeId()
+                .equals(secondType.getTypeId())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean sameTypeTimings(List<ChunkTypeTiming> first, List<ChunkTypeTiming> second) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (int index = 0; index < first.size(); index++) {
+            var firstTiming = first.get(index);
+            var secondTiming = second.get(index);
+            if (firstTiming.getCategory() != secondTiming.getCategory() || !firstTiming.getTypeName()
+                .equals(secondTiming.getTypeName())
+                || firstTiming.getNanos() != secondTiming.getNanos()
+                || firstTiming.getCount() != secondTiming.getCount()
+                || firstTiming.getPeakNanos() != secondTiming.getPeakNanos()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Optional.Method(modid = "journeymap_api")
     public PolygonOverlay createOverlay(MapOverlayCell cell) {
+        return createNavigatorOverlay(cell);
+    }
+
+    @Optional.Method(modid = "journeymap_api")
+    public static PolygonOverlay createNavigatorOverlay(MapOverlayCell cell) {
         int minX = cell.getChunkX() << 4;
         int minZ = cell.getChunkZ() << 4;
         int maxX = minX + 16;
@@ -144,6 +327,22 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         points.add(new BlockPos(maxX, 64, minZ));
         points.add(new BlockPos(maxX, 64, maxZ));
         points.add(new BlockPos(minX, 64, maxZ));
+        PolygonOverlay overlay = new PolygonOverlay(
+            FlameChunk.MODID,
+            cell.getDimensionId(),
+            new ShapeProperties(),
+            new MapPolygon(points));
+        updateNavigatorOverlay(overlay, cell);
+        return overlay;
+    }
+
+    @Optional.Method(modid = "journeymap_api")
+    public void updateOverlay(PolygonOverlay overlay, MapOverlayCell cell) {
+        updateNavigatorOverlay(overlay, cell);
+    }
+
+    @Optional.Method(modid = "journeymap_api")
+    public static void updateNavigatorOverlay(PolygonOverlay overlay, MapOverlayCell cell) {
         ShapeProperties properties = new ShapeProperties().setFillColor(cell.getColor())
             .setFillOpacity(cell.getOpacity())
             .setStrokeColor(cell.getTicketSourceColor())
@@ -151,16 +350,12 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
                 ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0 ? ColorUtils.TICKET_STROKE_OPACITY
                     : 0.0F)
             .setStrokeWidth(1.5F);
-        PolygonOverlay overlay = new PolygonOverlay(
-            FlameChunk.MODID,
-            cell.getDimensionId(),
-            properties,
-            new MapPolygon(points));
+        overlay.setShapeProperties(properties);
         overlay.setOverlayGroupName(GROUP_NAME)
             .setTitle(String.join("\n", MapOverlayTooltip.lines(cell)))
             .setLabel(cell.getLabel())
             .setActiveUIs(Context.UI.Fullscreen, Context.UI.Minimap)
-            .setDisplayOrder(100);
-        return overlay;
+            .setDisplayOrder(100)
+            .flagForRerender();
     }
 }

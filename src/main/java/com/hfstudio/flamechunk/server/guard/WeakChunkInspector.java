@@ -2,7 +2,6 @@ package com.hfstudio.flamechunk.server.guard;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -34,6 +33,8 @@ import cpw.mods.fml.common.gameevent.TickEvent.WorldTickEvent;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class WeakChunkInspector {
 
@@ -260,7 +261,7 @@ public class WeakChunkInspector {
     public static class ScanState {
 
         public final Long2IntOpenHashMap entityCounts = new Long2IntOpenHashMap();
-        public final Long2ObjectOpenHashMap<Map<String, Integer>> typeCounts = new Long2ObjectOpenHashMap<>();
+        public final Long2ObjectOpenHashMap<Object2IntOpenHashMap<String>> typeCounts = new Long2ObjectOpenHashMap<>();
         public boolean scanning;
         public int cursor;
         public int inspected;
@@ -300,18 +301,18 @@ public class WeakChunkInspector {
                     continue;
                 }
                 entityCounts.addTo(key, 1);
-                Map<String, Integer> counts = typeCounts.get(key);
+                Object2IntOpenHashMap<String> counts = typeCounts.get(key);
                 if (counts == null) {
-                    counts = new HashMap<>();
+                    counts = new Object2IntOpenHashMap<>();
+                    counts.defaultReturnValue(0);
                     typeCounts.put(key, counts);
                 }
                 String type = entityType(entity);
-                Integer count = counts.get(type);
-                if (count == null && counts.size() >= MAX_TRACKED_TYPES_PER_CHUNK) {
+                if (!counts.containsKey(type) && counts.size() >= MAX_TRACKED_TYPES_PER_CHUNK) {
                     truncated = true;
                     continue;
                 }
-                counts.put(type, count == null ? 1 : count + 1);
+                counts.addTo(type, 1);
             }
             if (inspected >= maximumEntities && cursor < entities.size()) {
                 truncated = true;
@@ -348,25 +349,25 @@ public class WeakChunkInspector {
             return latestSnapshot;
         }
 
-        public List<EntityTypeCount> topTypes(Map<String, Integer> counts) {
+        public List<EntityTypeCount> topTypes(Object2IntOpenHashMap<String> counts) {
             if (counts == null || counts.isEmpty()) {
                 return Collections.emptyList();
             }
-            List<Map.Entry<String, Integer>> entries = new ArrayList<>(counts.entrySet());
+            List<Object2IntMap.Entry<String>> entries = new ArrayList<>(counts.object2IntEntrySet());
             entries.sort((left, right) -> {
-                int countOrder = Integer.compare(right.getValue(), left.getValue());
+                int countOrder = Integer.compare(right.getIntValue(), left.getIntValue());
                 return countOrder != 0 ? countOrder
                     : left.getKey()
                         .compareTo(right.getKey());
             });
             List<EntityTypeCount> result = new ArrayList<>(Math.min(MAX_REPORTED_TYPES, entries.size()));
             for (int index = 0; index < entries.size() && index < MAX_REPORTED_TYPES; index++) {
-                Map.Entry<String, Integer> entry = entries.get(index);
+                Object2IntMap.Entry<String> entry = entries.get(index);
                 String typeId = entry.getKey();
                 if (typeId.length() > WeakChunkSnapshot.MAX_TYPE_ID_LENGTH) {
                     typeId = typeId.substring(0, WeakChunkSnapshot.MAX_TYPE_ID_LENGTH);
                 }
-                result.add(new EntityTypeCount(typeId, entry.getValue()));
+                result.add(new EntityTypeCount(typeId, entry.getIntValue()));
             }
             return result;
         }

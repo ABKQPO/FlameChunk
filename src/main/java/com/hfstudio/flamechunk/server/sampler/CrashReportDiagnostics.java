@@ -2,8 +2,8 @@ package com.hfstudio.flamechunk.server.sampler;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -70,6 +70,7 @@ public class CrashReportDiagnostics {
             .getPersistentChunksFor(world);
         Long2IntOpenHashMap entityCounts = entityCounts(world);
         TreeMap<String, OwnerSummary> owners = new TreeMap<>();
+        Map<String, String> teamNames = new HashMap<>();
         int inspected = 0;
         boolean truncated = false;
         for (Map.Entry<ChunkCoordIntPair, ForgeChunkManager.Ticket> entry : tickets.entries()) {
@@ -78,7 +79,7 @@ public class CrashReportDiagnostics {
                 break;
             }
             ForgeChunkManager.Ticket ticket = entry.getValue();
-            String source = ticketSource(ticket);
+            String source = ticketSource(ticket, teamNames);
             OwnerSummary summary = owners.get(source);
             if (summary == null) {
                 if (owners.size() >= MAX_OWNERS_REPORTED) {
@@ -148,20 +149,11 @@ public class CrashReportDiagnostics {
     }
 
     public static String ticketSource(ForgeChunkManager.Ticket ticket) {
-        if (ticket.isPlayerTicket()) {
-            return "player:" + ticket.getPlayerName();
-        }
-        Entity entity = ticket.getEntity();
-        if (entity != null) {
-            return "entity:" + entity.getClass()
-                .getSimpleName();
-        }
-        String modId = ticket.getModId();
-        String ticketType = ticket.getType() == null ? "unknown"
-            : ticket.getType()
-                .name()
-                .toLowerCase(Locale.ENGLISH);
-        return (modId == null || modId.length() == 0 ? "unknown" : modId) + ":" + ticketType;
+        return ticketSource(ticket, null);
+    }
+
+    public static String ticketSource(ForgeChunkManager.Ticket ticket, Map<String, String> teamNames) {
+        return LoaderTicketSource.describe(ticket, FlameChunk.serverUtilities, teamNames);
     }
 
     public static String join(List<String> values) {

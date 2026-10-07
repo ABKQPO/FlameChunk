@@ -20,20 +20,14 @@ public class ClientMapIntegrations {
         for (MapOverlaySink integration : MapOverlayApi.registeredIntegrations()) {
             register(integration);
         }
-        if (Mods.JourneyMap6.isModLoaded()) {
-            try {
-                sinks.add(JourneyMap6Adapter.createBridge());
-                FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");
-            } catch (LinkageError error) {
-                FlameChunk.LOG.warn("JourneyMap 6 heatmap integration is unavailable", error);
-            }
-        } else if (Mods.JourneyMap5.isModLoaded()) {
+        if (Mods.JourneyMap5.isModLoaded()) {
             FlameChunk.LOG.info("JourneyMap 5 heatmap integration enabled");
         }
     }
 
     public void publish(MapOverlayModel model) {
         ClientMapOverlayState.publish(model);
+        NavigatorMapBridge.publish(model);
         Iterator<MapOverlaySink> iterator = sinks.iterator();
         while (iterator.hasNext()) {
             MapOverlaySink sink = iterator.next();
@@ -70,6 +64,7 @@ public class ClientMapIntegrations {
 
     public void clear() {
         ClientMapOverlayState.clear();
+        NavigatorMapBridge.publish(ClientMapOverlayState.get());
         Iterator<MapOverlaySink> iterator = sinks.iterator();
         while (iterator.hasNext()) {
             MapOverlaySink sink = iterator.next();

@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.hfstudio.flamechunk.client.integration.NavigatorMapBridge;
 import com.hfstudio.flamechunk.client.integration.XaeroOverlayRenderer;
 
 import xaero.common.minimap.MinimapProcessor;
@@ -19,6 +20,8 @@ public abstract class MixinMinimapProcessor {
     @Inject(method = "onRender", at = @At("RETURN"), remap = false)
     private void flamechunk$renderHeatmap(int x, int y, int width, int height, int scale, int size, int boxSize,
         float partial, CallbackInfo callbackInfo) {
-        XaeroOverlayRenderer.renderMinimap(x, y, boxSize, partial, minimapZoom);
+        if (!NavigatorMapBridge.ownsXaeroMinimap()) {
+            XaeroOverlayRenderer.renderMinimap(x, y, boxSize, partial, minimapZoom);
+        }
     }
 }

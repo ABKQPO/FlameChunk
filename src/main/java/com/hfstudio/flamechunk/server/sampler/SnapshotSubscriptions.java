@@ -123,6 +123,7 @@ public class SnapshotSubscriptions {
         public final NetworkManager manager;
         public boolean worldHotspots;
         public boolean pendingSnapshot = true;
+        public long lastUnknownStackRequestNanos;
 
         public Subscription(NetworkManager manager, boolean worldHotspots) {
             this.manager = manager;

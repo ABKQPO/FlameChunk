@@ -1,6 +1,7 @@
 package com.hfstudio.flamechunk.client.integration;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -20,20 +21,47 @@ public class MapOverlayTooltip {
     public static final int PADDING = 3;
     public static final int OFFSET = 8;
     public static final int MARGIN = 2;
+    public static MapOverlayCell cachedCell;
+    public static int cachedChunkX;
+    public static int cachedChunkZ;
+    public static int cachedNanosHash;
+    public static long cachedSignature = -1L;
+    public static List<String> cachedLines = List.of();
 
     public static void draw(int mouseX, int mouseY, MapOverlayCell cell, int width, int height) {
-        if (cell == null) {
-            return;
+        if (cell != null) {
+            draw(mouseX, mouseY, cell, cell.getChunkX(), cell.getChunkZ(), width, height);
         }
-        List<String> lines = lines(cell);
+    }
+
+    public static void draw(int mouseX, int mouseY, MapOverlayCell cell, int chunkX, int chunkZ, int width,
+        int height) {
+        List<String> lines = lines(cell, chunkX, chunkZ);
         if (lines.isEmpty()) {
             return;
         }
         Minecraft minecraft = Minecraft.getMinecraft();
         FontRenderer font = minecraft.fontRenderer;
         int lineHeight = font.FONT_HEIGHT + 1;
+        int maximumTextWidth = Math.max(1, width - MARGIN * 2 - PADDING * 2);
+        int maximumLines = Math.max(1, (height - MARGIN * 2 - PADDING * 2) / lineHeight);
+        if (lines.size() > maximumLines) {
+            int hiddenLines = lines.size() - maximumLines + 1;
+            List<String> visibleLines = new ArrayList<>(maximumLines);
+            visibleLines.addAll(lines.subList(0, maximumLines - 1));
+            visibleLines.add(StatCollector.translateToLocalFormatted("flamechunk.tooltip.truncated", hiddenLines));
+            lines = visibleLines;
+        }
         int textWidth = 0;
-        for (String line : lines) {
+        for (int index = 0; index < lines.size(); index++) {
+            String line = lines.get(index);
+            if (font.getStringWidth(line) > maximumTextWidth) {
+                String suffix = "...";
+                int prefixWidth = maximumTextWidth - font.getStringWidth(suffix);
+                line = prefixWidth > 0 ? font.trimStringToWidth(line, prefixWidth) + suffix
+                    : font.trimStringToWidth(line, maximumTextWidth);
+                lines.set(index, line);
+            }
             textWidth = Math.max(textWidth, font.getStringWidth(line));
         }
         int boxWidth = textWidth + PADDING * 2;
@@ -46,8 +74,8 @@ public class MapOverlayTooltip {
         if (y + boxHeight > height - MARGIN) {
             y = mouseY - OFFSET - boxHeight;
         }
-        x = Math.max(MARGIN, x);
-        y = Math.max(MARGIN, y);
+        x = Math.max(MARGIN, Math.min(x, width - MARGIN - boxWidth));
+        y = Math.max(MARGIN, Math.min(y, height - MARGIN - boxHeight));
         Gui.drawRect(x, y, x + boxWidth, y + boxHeight, ColorUtils.PANEL_BACKGROUND.getColor());
         for (int index = 0; index < lines.size(); index++) {
             font.drawStringWithShadow(
@@ -59,14 +87,39 @@ public class MapOverlayTooltip {
     }
 
     public static List<String> lines(MapOverlayCell cell) {
-        if (cell == null) {
-            return new ArrayList<>();
+        return cell == null ? new ArrayList<>() : lines(cell, cell.getChunkX(), cell.getChunkZ());
+    }
+
+    public static List<String> lines(MapOverlayCell cell, int chunkX, int chunkZ) {
+        long signature = settingSignature();
+        int nanosHash = cell == null ? 0 : Arrays.hashCode(cell.nanos);
+        if (cell == cachedCell && chunkX == cachedChunkX
+            && chunkZ == cachedChunkZ
+            && nanosHash == cachedNanosHash
+            && signature == cachedSignature) {
+            return new ArrayList<>(cachedLines);
         }
+        List<String> lines = buildLines(cell, chunkX, chunkZ);
+        cachedCell = cell;
+        cachedChunkX = chunkX;
+        cachedChunkZ = chunkZ;
+        cachedNanosHash = nanosHash;
+        cachedSignature = signature;
+        cachedLines = List.copyOf(lines);
+        return lines;
+    }
+
+    public static List<String> buildLines(MapOverlayCell cell, int chunkX, int chunkZ) {
         List<String> lines = new ArrayList<>();
+        if (!ClientConfig.hasTooltipLines()) {
+            return lines;
+        }
         if (ClientConfig.tooltipCoordinates) {
-            lines.add(
-                StatCollector
-                    .translateToLocalFormatted("flamechunk.tooltip.coords", cell.getChunkX(), cell.getChunkZ()));
+            lines.add(StatCollector.translateToLocalFormatted("flamechunk.tooltip.coords", chunkX, chunkZ));
+        }
+        if (cell == null) {
+            lines.add(StatCollector.translateToLocal("flamechunk.tooltip.unsampled"));
+            return lines;
         }
         if (ClientConfig.tooltipEntityCount) {
             lines.add(StatCollector.translateToLocalFormatted("flamechunk.tooltip.entities", cell.getEntityCount()));
@@ -103,12 +156,19 @@ public class MapOverlayTooltip {
             if (mspt <= 0.0D) {
                 continue;
             }
+            String name = categoryName(category);
+            if (category == TickCategory.BLOCK_UPDATE) {
+                name += "*";
+            }
             lines.add(
                 StatCollector.translateToLocalFormatted(
                     "flamechunk.tooltip.category",
-                    categoryName(category),
+                    name,
                     String.format(Locale.ENGLISH, "%.3f", mspt),
                     ClientConfig.tooltipCategoryUnits ? " ms/t" : ""));
+            if (category == TickCategory.BLOCK_UPDATE) {
+                lines.add(StatCollector.translateToLocal("flamechunk.tooltip.blockUpdateNote"));
+            }
         }
         for (ChunkTypeTiming typeTiming : cell.getTypeTimings()) {
             if (!ClientConfig.tooltipCategories.contains(typeTiming.getCategory())) {
@@ -130,6 +190,21 @@ public class MapOverlayTooltip {
                     .translateToLocalFormatted("flamechunk.client.peak", typeTiming.getPeakNanos() / 1000000.0D));
         }
         return lines;
+    }
+
+    public static long settingSignature() {
+        long signature = (ClientConfig.tooltipCoordinates ? 1L : 0L) | (ClientConfig.tooltipEntityCount ? 1L << 1 : 0L)
+            | (ClientConfig.tooltipTotal ? 1L << 2 : 0L)
+            | (ClientConfig.tooltipLoadLevel ? 1L << 3 : 0L)
+            | (ClientConfig.tooltipTicketSource ? 1L << 4 : 0L)
+            | (ClientConfig.tooltipCategoryNamesShort ? 1L << 5 : 0L)
+            | (ClientConfig.tooltipCategoryUnits ? 1L << 6 : 0L);
+        for (TickCategory category : TickCategory.values()) {
+            if (ClientConfig.tooltipCategories.contains(category)) {
+                signature |= 1L << (7 + category.ordinal());
+            }
+        }
+        return signature;
     }
 
     public static String categoryName(TickCategory category) {

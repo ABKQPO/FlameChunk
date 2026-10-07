@@ -22,10 +22,11 @@ public enum Mods implements IMod, ITargetMod {
     Angelica("angelica"),
     JourneyMap("journeymap"),
     JourneyMap5("journeymap", Mods::isJourneyMap5),
-    JourneyMap6("journeymap", Mods::isJourneyMap6),
+    JourneyMap6("journeymap_api", Mods::isJourneyMap6),
     JourneyMapApi("journeymap_api"),
     XaeroWorldMap("XaeroWorldMap"),
     XaeroMinimap("XaeroMinimap"),
+    Navigator("navigator"),
     ServerUtilities("serverutilities"),
     ;
     // spotless:on
@@ -95,11 +96,11 @@ public enum Mods implements IMod, ITargetMod {
     }
 
     public static boolean isJourneyMap5() {
-        return hasJourneyMapVersion("5.");
+        return Loader.isModLoaded(JourneyMap5.modid) && !Loader.isModLoaded(JourneyMap6.modid);
     }
 
     public static boolean isJourneyMap6() {
-        return JourneyMapApi.isModLoaded() && hasJourneyMapVersion("6.");
+        return Loader.isModLoaded(JourneyMap6.modid);
     }
 
     public static boolean hasJourneyMapVersion(String prefix) {
@@ -109,10 +110,10 @@ public enum Mods implements IMod, ITargetMod {
         ModContainer container = Loader.instance()
             .getIndexedModList()
             .get(JourneyMap.modid);
-        if (container == null || container.getVersion() == null) {
+        if (container == null) {
             return false;
         }
         String version = container.getVersion();
-        return version.startsWith(prefix) || version.contains("-" + prefix);
+        return version != null && (version.startsWith(prefix) || version.contains("-" + prefix));
     }
 }

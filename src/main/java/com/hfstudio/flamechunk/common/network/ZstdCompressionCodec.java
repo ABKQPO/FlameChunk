@@ -1,7 +1,6 @@
 package com.hfstudio.flamechunk.common.network;
 
 import com.github.luben.zstd.Zstd;
-import com.hfstudio.flamechunk.common.config.ServerConfig;
 
 public class ZstdCompressionCodec implements CompressionCodec {
 
@@ -17,10 +16,10 @@ public class ZstdCompressionCodec implements CompressionCodec {
 
     @Override
     public byte[] decompress(byte[] input, int originalSize) {
-        if (originalSize < 0 || originalSize > ServerConfig.maxPacketBytes) {
+        if (originalSize < 0 || originalSize > NetworkHandler.MAX_PACKET_BYTES) {
             throw new IllegalArgumentException("Original size exceeds configured packet limit");
         }
-        if (input != null && input.length > ServerConfig.maxPacketBytes) {
+        if (input != null && input.length > NetworkHandler.MAX_PACKET_BYTES) {
             throw new IllegalArgumentException("Compressed size exceeds configured packet limit");
         }
         if (originalSize == 0) {

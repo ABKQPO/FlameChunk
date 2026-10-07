@@ -3,8 +3,8 @@ package com.hfstudio.flamechunk.server.sampler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import net.minecraft.command.ICommandSender;
@@ -14,6 +14,7 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
 import com.google.common.collect.ImmutableSetMultimap;
+import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.server.command.ServerMessages;
 
 public class LoaderTicketReport {
@@ -42,13 +43,14 @@ public class LoaderTicketReport {
                     world.provider.dimensionId,
                     tickets.size()));
             List<TicketEntry> rows = new ArrayList<>(Math.min(MAX_TICKET_ROWS_PER_DIMENSION, tickets.size()));
+            Map<String, String> teamNames = new HashMap<>();
             long sequence = 0L;
             for (Map.Entry<ChunkCoordIntPair, ForgeChunkManager.Ticket> entry : tickets.entries()) {
                 ChunkCoordIntPair position = entry.getKey();
                 TicketEntry row = new TicketEntry(
                     position.chunkXPos,
                     position.chunkZPos,
-                    ticketSource(entry.getValue()),
+                    LoaderTicketSource.describe(entry.getValue(), FlameChunk.serverUtilities, teamNames),
                     sequence++);
                 int index = Collections.binarySearch(rows, row, TICKET_ORDER);
                 index = index < 0 ? -index - 1 : index;
@@ -100,20 +102,7 @@ public class LoaderTicketReport {
     }
 
     public static String ticketSource(ForgeChunkManager.Ticket ticket) {
-        if (ticket.isPlayerTicket()) {
-            return "player:" + ticket.getPlayerName();
-        }
-        if (ticket.getEntity() != null) {
-            return "entity:" + ticket.getEntity()
-                .getClass()
-                .getSimpleName();
-        }
-        String modId = ticket.getModId();
-        String type = ticket.getType() == null ? "unknown"
-            : ticket.getType()
-                .name()
-                .toLowerCase(Locale.ENGLISH);
-        return (modId == null || modId.length() == 0 ? "unknown" : modId) + ":" + type;
+        return LoaderTicketSource.describe(ticket, FlameChunk.serverUtilities);
     }
 
     public static class TicketEntry {

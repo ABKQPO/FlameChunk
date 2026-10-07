@@ -96,11 +96,7 @@ public class MapOverlayApi {
 
     public static List<MapMenuItem> menuItems(GuiScreen parent, MapTarget target) {
         List<MapMenuItem> items = new ArrayList<>();
-        items.add(
-            new MapMenuItem(
-                StatCollector.translateToLocal("flamechunk.client.journeymap.scan"),
-                MapOverlayApi::requestScan));
-        items.add(new MapMenuItem(StatCollector.translateToLocal("flamechunk.client.stop"), MapOverlayApi::stopScan));
+        items.add(new MapMenuItem(MapOverlayControls.scanMenuLabel(), MapOverlayControls::toggleScan));
         items.add(
             new MapMenuItem(
                 StatCollector.translateToLocal("flamechunk.client.journeymap.clear"),

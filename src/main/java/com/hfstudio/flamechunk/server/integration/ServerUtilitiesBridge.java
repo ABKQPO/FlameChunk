@@ -18,6 +18,10 @@ public interface ServerUtilitiesBridge {
 
     String describeClaim(World world, int chunkX, int chunkZ);
 
+    default String describeTeam(String teamId) {
+        return null;
+    }
+
     static ServerUtilitiesBridge create() {
         if (!Mods.ServerUtilities.isModLoaded()) {
             return NONE;
@@ -30,7 +34,7 @@ public interface ServerUtilitiesBridge {
         }
     }
 
-    class NoOpServerUtilitiesBridge implements ServerUtilitiesBridge {
+    public static class NoOpServerUtilitiesBridge implements ServerUtilitiesBridge {
 
         @Override
         public boolean isAvailable() {

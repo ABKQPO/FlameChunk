@@ -16,13 +16,14 @@ import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
 import com.hfstudio.flamechunk.common.data.ObjectHotspot;
 import com.hfstudio.flamechunk.common.data.ObservationSnapshot;
 import com.hfstudio.flamechunk.common.data.ObservationSnapshot.Entry;
+import com.hfstudio.flamechunk.common.data.ObservationSnapshot.StackDetail;
 import com.hfstudio.flamechunk.common.data.ScanLimits;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class SnapshotCodec {
 
-    public static final int CODEC_VERSION = 10;
+    public static final int CODEC_VERSION = 11;
     public static final TickCategory[] CATEGORIES = TickCategory.values();
 
     public byte[] encode(ScanSnapshot snapshot) {
@@ -79,10 +80,10 @@ public class SnapshotCodec {
     }
 
     public ScanSnapshot decode(byte[] encoded, int expectedSize) {
-        if (encoded == null || encoded.length == 0 || encoded.length > ServerConfig.maxPacketBytes) {
-            throw new IllegalArgumentException("Encoded snapshot exceeds configured packet limit");
+        if (encoded == null || encoded.length == 0 || encoded.length > NetworkHandler.MAX_PACKET_BYTES) {
+            throw new IllegalArgumentException("Encoded snapshot exceeds protocol packet limit");
         }
-        if (expectedSize < 0 || expectedSize > ServerConfig.maxPacketBytes) {
+        if (expectedSize < 0 || expectedSize > NetworkHandler.MAX_PACKET_BYTES) {
             throw new IllegalArgumentException("Invalid snapshot size");
         }
         if (expectedSize != encoded.length) {
@@ -97,11 +98,11 @@ public class SnapshotCodec {
             long ticks = input.readLong();
             validateScanWindow(duration, ticks);
             ObservationSnapshot observations = readObservations(input);
-            int dimensionCount = readCount(input, ServerConfig.maxDimensions, "dimension");
+            int dimensionCount = readCount(input, NetworkHandler.MAX_DIMENSIONS, "dimension");
             DimensionSnapshot[] dimensions = new DimensionSnapshot[dimensionCount];
             for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++) {
                 int dimensionId = input.readInt();
-                int chunkCount = readCount(input, ServerConfig.maxChunksPerDimension, "chunk");
+                int chunkCount = readCount(input, NetworkHandler.MAX_CHUNKS_PER_DIMENSION, "chunk");
                 long[] globalNanos = readLongs(input);
                 int[] globalCounts = readInts(input);
                 List<ChunkTypeTiming> globalTypeTimings = readTypeTimings(input);
@@ -173,6 +174,19 @@ public class SnapshotCodec {
             output.writeLong(entry.peakNanos());
             output.writeLong(entry.samples());
         }
+        output.writeByte(
+            snapshot.unknownStacks()
+                .size());
+        for (StackDetail detail : snapshot.unknownStacks()) {
+            output.writeUTF(detail.anchor());
+            output.writeInt(detail.samples());
+            output.writeByte(
+                detail.frames()
+                    .size());
+            for (String frame : detail.frames()) {
+                output.writeUTF(frame);
+            }
+        }
     }
 
     public static ObservationSnapshot readObservations(DataInputStream input) throws IOException {
@@ -200,7 +214,35 @@ public class SnapshotCodec {
                     input.readLong(),
                     input.readLong()));
         }
-        return new ObservationSnapshot(nanos, peak, ticks, attempts, consistent, discarded, interval, reason, entries);
+        int stackCount = input.readUnsignedByte();
+        if (stackCount > ObservationSnapshot.MAX_UNKNOWN_STACKS) {
+            throw new IllegalArgumentException("Unknown stack count exceeds the limit");
+        }
+        List<StackDetail> unknownStacks = new ArrayList<>(stackCount);
+        for (int index = 0; index < stackCount; index++) {
+            String anchor = input.readUTF();
+            int samples = input.readInt();
+            int frameCount = input.readUnsignedByte();
+            if (frameCount > ObservationSnapshot.MAX_STACK_FRAMES) {
+                throw new IllegalArgumentException("Unknown stack frame count exceeds the limit");
+            }
+            List<String> frames = new ArrayList<>(frameCount);
+            for (int frame = 0; frame < frameCount; frame++) {
+                frames.add(input.readUTF());
+            }
+            unknownStacks.add(new StackDetail(anchor, samples, frames));
+        }
+        return new ObservationSnapshot(
+            nanos,
+            peak,
+            ticks,
+            attempts,
+            consistent,
+            discarded,
+            interval,
+            reason,
+            entries,
+            unknownStacks);
     }
 
     public static void writeLongs(DataOutputStream output, long[] values) throws IOException {

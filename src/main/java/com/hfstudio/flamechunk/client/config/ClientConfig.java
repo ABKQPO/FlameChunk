@@ -132,6 +132,18 @@ public class ClientConfig {
         return Math.max(MIN_SCAN_SECONDS, Math.min(MAX_SCAN_SECONDS, value));
     }
 
+    public static boolean hasTooltipLines() {
+        if (tooltipCoordinates || tooltipEntityCount || tooltipTotal || tooltipLoadLevel || tooltipTicketSource) {
+            return true;
+        }
+        for (TickCategory category : TickCategory.values()) {
+            if (tooltipCategories.contains(category)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Config.LangKeyPattern(pattern = "flamechunk.gui.config.%cat.%field", fullyQualified = true)
     public static class TooltipCategories {
 

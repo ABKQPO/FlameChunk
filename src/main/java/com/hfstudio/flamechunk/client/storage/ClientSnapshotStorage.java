@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 public class ClientSnapshotStorage {
 
     public ScanSnapshot snapshot;
+    public long reportId;
     public final Int2ObjectOpenHashMap<WeakChunkSnapshot> weakSnapshots = new Int2ObjectOpenHashMap<>();
     public long elapsedTicks;
     public long totalTicks;
@@ -20,6 +21,7 @@ public class ClientSnapshotStorage {
 
     public synchronized void clear() {
         snapshot = null;
+        reportId = 0L;
         elapsedTicks = 0L;
         totalTicks = 0L;
         scanning = false;
@@ -46,7 +48,12 @@ public class ClientSnapshotStorage {
     }
 
     public synchronized void publish(ScanSnapshot value, boolean finalSnapshot) {
+        publish(value, finalSnapshot, 0L);
+    }
+
+    public synchronized void publish(ScanSnapshot value, boolean finalSnapshot, long valueReportId) {
         snapshot = value;
+        reportId = valueReportId;
         if (finalSnapshot) {
             scanning = false;
             status = -1;
@@ -64,6 +71,10 @@ public class ClientSnapshotStorage {
 
     public synchronized ScanSnapshot getSnapshot() {
         return snapshot;
+    }
+
+    public synchronized long getReportId() {
+        return reportId;
     }
 
     public synchronized void publishWeakSnapshot(WeakChunkSnapshot value) {
@@ -106,7 +117,7 @@ public class ClientSnapshotStorage {
             scanning = false;
             return;
         }
-        if (value >= ScanProgressPacket.QUEUED && value <= ScanProgressPacket.SERVER_UNAVAILABLE) {
+        if (value >= ScanProgressPacket.QUEUED && value <= ScanProgressPacket.SCAN_INTERRUPTED) {
             status = value;
             scanning = value == ScanProgressPacket.STARTED;
         }

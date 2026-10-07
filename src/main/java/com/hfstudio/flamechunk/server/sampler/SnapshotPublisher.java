@@ -25,10 +25,11 @@ public class SnapshotPublisher {
     public final SnapshotCodec snapshotCodec = new SnapshotCodec();
     public final ZstdCompressionCodec compressionCodec = new ZstdCompressionCodec();
 
-    public Set<NetworkManager> publish(ScanSnapshot snapshot, boolean finalSnapshot, List<Subscription> subscriptions,
-        ObjectHotspotStore hotspots) {
+    public Set<NetworkManager> publish(ScanSnapshot snapshot, boolean finalSnapshot, long reportId,
+        List<Subscription> subscriptions, ObjectHotspotStore hotspots) {
         Set<NetworkManager> delivered = new HashSet<>();
-        SnapshotPacket reportPacket = null;
+        SnapshotPacket operatorReportPacket = null;
+        SnapshotPacket limitedReportPacket = null;
         SnapshotPacket mapPacket = null;
         for (Subscription subscription : subscriptions) {
             EntityPlayerMP player = subscription.player();
@@ -38,17 +39,32 @@ public class SnapshotPublisher {
             try {
                 SnapshotPacket packet;
                 if (finalSnapshot) {
-                    if (reportPacket == null) {
-                        reportPacket = encode(snapshot, true);
+                    if (player.canCommandSenderUseCommand(2, "flamechunk")) {
+                        if (operatorReportPacket == null) {
+                            operatorReportPacket = encode(snapshot, true, reportId);
+                        }
+                        packet = operatorReportPacket;
+                    } else {
+                        if (limitedReportPacket == null) {
+                            ScanSnapshot limitedSnapshot = new ScanSnapshot(
+                                snapshot.getDurationSeconds(),
+                                snapshot.getSampledTicks(),
+                                snapshot.getDimensions(),
+                                snapshot.observations.withoutUnknownStacks());
+                            limitedReportPacket = encode(limitedSnapshot, true, reportId);
+                        }
+                        packet = limitedReportPacket;
                     }
-                    packet = reportPacket;
                 } else if (!subscription.worldHotspots) {
                     if (mapPacket == null) {
-                        mapPacket = encode(snapshot, false);
+                        mapPacket = encode(snapshot, false, reportId);
                     }
                     packet = mapPacket;
                 } else {
-                    packet = encode(forSubscriber(snapshot, player, subscription.worldHotspots, hotspots), false);
+                    packet = encode(
+                        forSubscriber(snapshot, player, subscription.worldHotspots, hotspots),
+                        false,
+                        reportId);
                 }
                 FlameChunk.network.sendTo(packet, player);
                 subscription.pendingSnapshot = false;
@@ -61,10 +77,30 @@ public class SnapshotPublisher {
         return delivered;
     }
 
-    public SnapshotPacket encode(ScanSnapshot snapshot, boolean finalSnapshot) {
-        byte[] encoded = snapshotCodec.encode(snapshot);
-        byte[] compressed = compressionCodec.compress(encoded);
-        return new SnapshotPacket(encoded.length, compressed, finalSnapshot);
+    public SnapshotPacket encode(ScanSnapshot snapshot, boolean finalSnapshot, long reportId) {
+        try {
+            byte[] encoded = snapshotCodec.encode(snapshot);
+            byte[] compressed = compressionCodec.compress(encoded);
+            return new SnapshotPacket(encoded.length, compressed, finalSnapshot, reportId);
+        } catch (IllegalArgumentException exception) {
+            String message = exception.getMessage();
+            boolean packetSizeExceeded = message != null
+                && (message.startsWith("Encoded snapshot exceeds configured packet limit")
+                    || message.equals("Invalid snapshot packet size"));
+            if (!finalSnapshot || snapshot.observations.unknownStacks()
+                .isEmpty() || !packetSizeExceeded) {
+                throw exception;
+            }
+            FlameChunk.LOG.warn("FlameChunk snapshot exceeds the packet limit; retrying without Unknown stacks");
+            ScanSnapshot boundedSnapshot = new ScanSnapshot(
+                snapshot.getDurationSeconds(),
+                snapshot.getSampledTicks(),
+                snapshot.getDimensions(),
+                snapshot.observations.withoutUnknownStacks());
+            byte[] encoded = snapshotCodec.encode(boundedSnapshot);
+            byte[] compressed = compressionCodec.compress(encoded);
+            return new SnapshotPacket(encoded.length, compressed, finalSnapshot, reportId);
+        }
     }
 
     public ScanSnapshot forSubscriber(ScanSnapshot snapshot, EntityPlayerMP player, boolean includeHotspots,

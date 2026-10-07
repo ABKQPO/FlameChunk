@@ -5,6 +5,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import net.minecraft.world.ChunkCoordIntPair;
@@ -48,10 +49,30 @@ public class LoaderTicketControlService {
             return false;
         }
         Multimap<String, ForgeChunkManager.Ticket> tickets = ticketsForWorld(ticket.world);
-        if (!tickets.containsEntry(ticket.getModId(), ticket)) {
+        if (!containsTicket(tickets, ticket)) {
             return false;
         }
-        rememberTicket(ticket, chunk);
+        if (rememberTicketOnce(ticket, chunk)) {
+            long chunkKey = ChunkCoordIntPair.chunkXZ2Int(chunk.chunkXPos, chunk.chunkZPos);
+            Set<ForgeChunkManager.Ticket> blockedTickets = BLOCKED_TICKETS.get(ticket.world)
+                .get(chunkKey);
+            LoaderControlData.TicketReference reference = data.reference(ticket);
+            int storedCount = 0;
+            for (LoaderControlData.TicketReference stored : data.ticketReferences(chunk)) {
+                if (sameTicketReference(stored, reference)) {
+                    storedCount++;
+                }
+            }
+            int blockedCount = 0;
+            for (ForgeChunkManager.Ticket blockedTicket : blockedTickets) {
+                if (sameTicketReference(reference, data.reference(blockedTicket))) {
+                    blockedCount++;
+                }
+            }
+            if (blockedCount > storedCount) {
+                data.storeTicketReference(chunk, ticket);
+            }
+        }
         return true;
     }
 
@@ -71,6 +92,7 @@ public class LoaderTicketControlService {
             return -1;
         }
         rememberTickets(tickets, chunk);
+        data.storeTicketReferences(chunk, tickets);
         for (ForgeChunkManager.Ticket ticket : tickets) {
             ForgeChunkManager.unforceChunk(ticket, chunk);
         }
@@ -83,14 +105,24 @@ public class LoaderTicketControlService {
         }
         ChunkCoordIntPair chunk = new ChunkCoordIntPair(chunkX, chunkZ);
         LoaderControlData data = getDataIfPresent(world);
+        List<LoaderControlData.TicketReference> references = data == null ? Collections.emptyList()
+            : data.ticketReferences(chunk);
         if (data != null) {
             data.setFrozen(chunk, false);
         }
         Set<ForgeChunkManager.Ticket> tickets = forgetTickets(world, chunk);
         Multimap<String, ForgeChunkManager.Ticket> worldTickets = ticketsForWorld(world);
+        Set<ForgeChunkManager.Ticket> matchedTickets = Collections.newSetFromMap(new IdentityHashMap<>());
+        matchedTickets.addAll(tickets);
+        for (LoaderControlData.TicketReference reference : references) {
+            ForgeChunkManager.Ticket restored = findTicket(worldTickets, reference, matchedTickets);
+            if (restored != null) {
+                matchedTickets.add(restored);
+            }
+        }
         int restored = 0;
-        for (ForgeChunkManager.Ticket ticket : tickets) {
-            if (worldTickets.containsEntry(ticket.getModId(), ticket)) {
+        for (ForgeChunkManager.Ticket ticket : matchedTickets) {
+            if (containsTicket(worldTickets, ticket)) {
                 ForgeChunkManager.forceChunk(ticket, chunk);
                 restored++;
             }
@@ -128,7 +160,7 @@ public class LoaderTicketControlService {
         Multimap<String, ForgeChunkManager.Ticket> worldTickets = ticketsForWorld(world);
         int cleared = 0;
         for (ForgeChunkManager.Ticket ticket : tickets) {
-            if (worldTickets.containsEntry(ticket.getModId(), ticket) && ticket.getChunkList()
+            if (containsTicket(worldTickets, ticket) && ticket.getChunkList()
                 .contains(chunk)) {
                 ForgeChunkManager.unforceChunk(ticket, chunk);
                 cleared++;
@@ -162,7 +194,18 @@ public class LoaderTicketControlService {
             boolean live = false;
             if (tickets != null) {
                 for (ForgeChunkManager.Ticket ticket : tickets) {
-                    if (liveTickets.containsEntry(ticket.getModId(), ticket)) {
+                    if (containsTicket(liveTickets, ticket)) {
+                        live = true;
+                        break;
+                    }
+                }
+            }
+            if (!live) {
+                Set<ForgeChunkManager.Ticket> matched = Collections.newSetFromMap(new IdentityHashMap<>());
+                for (LoaderControlData.TicketReference reference : data.ticketReferences(chunk)) {
+                    ForgeChunkManager.Ticket ticket = findTicket(liveTickets, reference, matched);
+                    if (ticket != null) {
+                        matched.add(ticket);
                         live = true;
                         break;
                     }
@@ -216,6 +259,10 @@ public class LoaderTicketControlService {
     }
 
     public static void rememberTicket(ForgeChunkManager.Ticket ticket, ChunkCoordIntPair chunk) {
+        rememberTicketOnce(ticket, chunk);
+    }
+
+    public static boolean rememberTicketOnce(ForgeChunkManager.Ticket ticket, ChunkCoordIntPair chunk) {
         long key = ChunkCoordIntPair.chunkXZ2Int(chunk.chunkXPos, chunk.chunkZPos);
         Long2ObjectMap<Set<ForgeChunkManager.Ticket>> byChunk = BLOCKED_TICKETS.get(ticket.world);
         if (byChunk == null) {
@@ -227,7 +274,7 @@ public class LoaderTicketControlService {
             tickets = Collections.newSetFromMap(new IdentityHashMap<>());
             byChunk.put(key, tickets);
         }
-        tickets.add(ticket);
+        return tickets.add(ticket);
     }
 
     public static Set<ForgeChunkManager.Ticket> forgetTickets(World world, ChunkCoordIntPair chunk) {
@@ -248,5 +295,49 @@ public class LoaderTicketControlService {
             .flamechunk$getTickets();
         Multimap<String, ForgeChunkManager.Ticket> worldTickets = tickets.get(world);
         return worldTickets == null ? ImmutableMultimap.of() : worldTickets;
+    }
+
+    public static boolean containsTicket(Multimap<String, ForgeChunkManager.Ticket> worldTickets,
+        ForgeChunkManager.Ticket ticket) {
+        return ticket.isPlayerTicket() ? worldTickets.containsValue(ticket)
+            : worldTickets.containsEntry(ticket.getModId(), ticket);
+    }
+
+    public static ForgeChunkManager.Ticket findTicket(Multimap<String, ForgeChunkManager.Ticket> worldTickets,
+        LoaderControlData.TicketReference reference, Set<ForgeChunkManager.Ticket> excluded) {
+        for (ForgeChunkManager.Ticket ticket : worldTickets.values()) {
+            if (excluded.contains(ticket) || !ticket.getModId()
+                .equals(reference.modId())
+                || ticket.getType()
+                    .ordinal() != reference.ticketType()
+                || !ticket.getModData()
+                    .equals(reference.modData())) {
+                continue;
+            }
+            String playerName = ticket.isPlayerTicket() ? ticket.getPlayerName() : "";
+            if (!playerName.equals(reference.playerName())) {
+                continue;
+            }
+            if (!Objects.equals(
+                reference.entityId(),
+                ticket.getEntity() == null ? null
+                    : ticket.getEntity()
+                        .getPersistentID())) {
+                continue;
+            }
+            return ticket;
+        }
+        return null;
+    }
+
+    private static boolean sameTicketReference(LoaderControlData.TicketReference left,
+        LoaderControlData.TicketReference right) {
+        return left.modId()
+            .equals(right.modId()) && left.ticketType() == right.ticketType()
+            && left.playerName()
+                .equals(right.playerName())
+            && Objects.equals(left.entityId(), right.entityId())
+            && left.modData()
+                .equals(right.modData());
     }
 }

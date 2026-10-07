@@ -18,9 +18,11 @@ import com.hfstudio.flamechunk.client.config.ReportOutputMode;
 import com.hfstudio.flamechunk.client.integration.ClientMapIntegrations;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.integration.MapOverlayModel;
+import com.hfstudio.flamechunk.client.integration.NavigatorMapBridge;
 import com.hfstudio.flamechunk.client.render.WorldPerformanceOverlay;
 import com.hfstudio.flamechunk.client.storage.ClientSnapshotStorage;
 import com.hfstudio.flamechunk.client.ui.DiagnosticScreen;
+import com.hfstudio.flamechunk.client.ui.PrimaryObservationScreen;
 import com.hfstudio.flamechunk.common.data.ChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
@@ -32,9 +34,11 @@ import com.hfstudio.flamechunk.common.network.ZstdCompressionCodec;
 import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.SnapshotPacket;
+import com.hfstudio.flamechunk.common.network.packet.UnknownStackDetailsPacket;
 import com.hfstudio.flamechunk.common.network.packet.WeakChunkSnapshotPacket;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
+import cpw.mods.fml.client.event.ConfigChangedEvent.OnConfigChangedEvent;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -72,6 +76,7 @@ public class ClientProxy extends CommonProxy {
 
     @Override
     public void init(FMLInitializationEvent event) {
+        NavigatorMapBridge.initialize();
         ClientRegistry.registerKeyBinding(controller.getDiagnosticKey());
         FMLCommonHandler.instance()
             .bus()
@@ -97,8 +102,8 @@ public class ClientProxy extends CommonProxy {
             final ScanSnapshot snapshot = snapshotCodec.decode(encoded, packet.getOriginalSize());
             Minecraft.getMinecraft()
                 .func_152344_a(() -> {
-                    snapshotStorage.publish(snapshot, packet.isFinalSnapshot());
-                    mapIntegrations.publish(MapOverlayModel.from(snapshot, snapshotStorage.getWeakSnapshots()));
+                    snapshotStorage.publish(snapshot, packet.isFinalSnapshot(), packet.getReportId());
+                    publishOverlay(snapshot);
                     showReport(snapshot, packet.isFinalSnapshot());
                 });
         } catch (RuntimeException exception) {
@@ -135,13 +140,26 @@ public class ClientProxy extends CommonProxy {
             .func_152344_a(() -> {
                 WeakChunkSnapshot snapshot = packet.getSnapshot();
                 snapshotStorage.publishWeakSnapshot(snapshot);
-                mapIntegrations
-                    .publish(MapOverlayModel.from(snapshotStorage.getSnapshot(), snapshotStorage.getWeakSnapshots()));
+                publishOverlay(snapshotStorage.getSnapshot());
+            });
+    }
+
+    @Override
+    public void handleUnknownStackDetails(final UnknownStackDetailsPacket packet) {
+        Minecraft.getMinecraft()
+            .func_152344_a(() -> {
+                if (Minecraft.getMinecraft().currentScreen instanceof PrimaryObservationScreen screen) {
+                    screen.handleUnknownStackDetails(packet);
+                }
             });
     }
 
     public void refreshOverlay(ScanSnapshot snapshot) {
-        if (mapIntegrations != null) {
+        publishOverlay(snapshot);
+    }
+
+    public void publishOverlay(ScanSnapshot snapshot) {
+        if (mapIntegrations != null && ClientMapIntegrations.hasMapIntegration()) {
             mapIntegrations.publish(MapOverlayModel.from(snapshot, snapshotStorage.getWeakSnapshots()));
         }
     }
@@ -165,6 +183,17 @@ public class ClientProxy extends CommonProxy {
     public void onClientTick(ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
             MapOverlayControls.updateSubscription();
+        }
+    }
+
+    @SubscribeEvent
+    public void onConfigChanged(OnConfigChangedEvent event) {
+        if (!FlameChunk.MODID.equals(event.modID)) {
+            return;
+        }
+        MapOverlayControls.updateSubscription();
+        if (snapshotStorage != null) {
+            publishOverlay(snapshotStorage.getSnapshot());
         }
     }
 

@@ -190,7 +190,8 @@ public class DiagnosticScreen extends GuiScreen {
                 mc.displayGuiScreen(new ObjectHotspotScreen(this, dimension, snapshot.getSampledTicks()));
             }
         } else if (button.id == 9 && storage.getSnapshot() != null) {
-            mc.displayGuiScreen(new PrimaryObservationScreen(this, storage.getSnapshot().observations));
+            mc.displayGuiScreen(
+                new PrimaryObservationScreen(this, storage.getSnapshot().observations, storage.getReportId()));
         }
     }
 
@@ -290,7 +291,7 @@ public class DiagnosticScreen extends GuiScreen {
             float mspt = sortCategoryIndex == TickCategory.COUNT ? calculateMspt(chunk, snapshot.getSampledTicks())
                 : (float) (chunk.getCategoryNanos(TickCategory.values()[sortCategoryIndex]) / 1000000.0D
                     / Math.max(1L, snapshot.getSampledTicks()));
-            if (!ClientConfig.showWeakIdleChunks && chunk.isWeakLoaded() && mspt <= 0.0F) {
+            if (!ClientConfig.showWeakIdleChunks && chunk.isWeakLoaded() && !chunk.isTimed()) {
                 continue;
             }
             int color = colors.colorForMspt(mspt, colorBudget);
@@ -403,7 +404,7 @@ public class DiagnosticScreen extends GuiScreen {
                         ? calculateMspt(chunk, snapshot.getSampledTicks())
                         : (float) (chunk.getCategoryNanos(TickCategory.values()[sortCategoryIndex]) / 1000000.0D
                             / Math.max(1L, snapshot.getSampledTicks()));
-                    if (!ClientConfig.showWeakIdleChunks && chunk.isWeakLoaded() && mspt <= 0.0F) {
+                    if (!ClientConfig.showWeakIdleChunks && chunk.isWeakLoaded() && !chunk.isTimed()) {
                         continue;
                     }
                     if (mouseY >= row && mouseY < row + 12 && mouseX >= 16 && mouseX < width - 16) {

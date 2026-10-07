@@ -36,6 +36,7 @@ public class ColorUtils {
     public static final float TICKET_MINIMUM_OPACITY = 0.8F;
     public static final float TICKET_STROKE_OPACITY = 0.9F;
     public static final float WEAK_IDLE_OPACITY = 0.18F;
+    public static final float HEAT_YELLOW_KNEE = 1.0F / 3.0F;
 
     public static int rgb(ColorResource resource) {
         return resource.getColor() & RGB_MASK;
@@ -47,8 +48,8 @@ public class ColorUtils {
 
     public static int heatColor(float mspt, float budgetMspt) {
         float ratio = normalize(mspt, budgetMspt);
-        return ratio < 0.5F ? blend(rgb(HEAT_LOW), rgb(HEAT_MEDIUM), ratio * 2.0F)
-            : blend(rgb(HEAT_MEDIUM), rgb(HEAT_HIGH), (ratio - 0.5F) * 2.0F);
+        return ratio < HEAT_YELLOW_KNEE ? blend(rgb(HEAT_LOW), rgb(HEAT_MEDIUM), ratio / HEAT_YELLOW_KNEE)
+            : blend(rgb(HEAT_MEDIUM), rgb(HEAT_HIGH), (ratio - HEAT_YELLOW_KNEE) / (1.0F - HEAT_YELLOW_KNEE));
     }
 
     public static float normalize(float mspt, float budgetMspt) {

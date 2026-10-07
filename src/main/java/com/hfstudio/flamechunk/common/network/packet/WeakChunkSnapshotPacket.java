@@ -32,7 +32,7 @@ public class WeakChunkSnapshotPacket implements IMessage {
     @Override
     public void fromBytes(ByteBuf buffer) {
         valid = false;
-        if (buffer.readableBytes() < 18 || buffer.readableBytes() > ServerConfig.maxPacketBytes
+        if (buffer.readableBytes() < 18 || buffer.readableBytes() > NetworkHandler.MAX_PACKET_BYTES
             || buffer.readInt() != NetworkHandler.PROTOCOL_MAGIC) {
             return;
         }

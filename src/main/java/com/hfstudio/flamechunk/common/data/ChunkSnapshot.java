@@ -106,6 +106,15 @@ public class ChunkSnapshot {
         return loadLevel >= 32;
     }
 
+    public boolean isTimed() {
+        for (int count : counts) {
+            if (count > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public long totalNanos() {
         long total = 0L;
         for (int index = 0; index < nanos.length; index++) {
