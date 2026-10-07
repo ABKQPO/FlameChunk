@@ -186,7 +186,7 @@ public class FlameChunkCommand extends CommandBase {
         if (args.length > 2) {
             throw new WrongUsageException(getCommandUsage(sender));
         }
-        if (ServerConfig.requireOperator && !sender.canCommandSenderUseCommand(2, getCommandName())) {
+        if (!authorized(sender, "flamechunk.scan")) {
             sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
             return;
         }

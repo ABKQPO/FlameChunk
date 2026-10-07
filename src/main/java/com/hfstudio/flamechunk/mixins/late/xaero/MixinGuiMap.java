@@ -114,7 +114,7 @@ public abstract class MixinGuiMap extends ScreenBase {
             value = "INVOKE",
             target = "Lxaero/map/gui/ScreenBase;drawScreen(IIF)V",
             shift = At.Shift.BEFORE,
-            remap = false),
+            remap = true),
         remap = true)
     private void flamechunk$renderHeatmap(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {

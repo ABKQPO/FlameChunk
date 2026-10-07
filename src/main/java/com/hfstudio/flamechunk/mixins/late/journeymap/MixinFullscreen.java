@@ -51,10 +51,11 @@ public abstract class MixinFullscreen {
     }
 
     @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
-    private void flamechunk$renderScanProgress(int width, int height, float f, CallbackInfo callbackInfo) {
-        MapScanProgressRenderer.render(6, height - 48, 6, height - 24, 76, 20);
+    private void flamechunk$renderScanProgress(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
+        Fullscreen screen = (Fullscreen) (Object) this;
+        MapScanProgressRenderer.render(6, screen.height - 48, 6, screen.height - 24, 76, 20);
         if ((chat == null || chat.isHidden()) && !flamechunk$hasWaypointHover()) {
-            JourneyMap5OverlayRenderer.renderTooltip((Fullscreen) (Object) this, gridRenderer, mx, my);
+            JourneyMap5OverlayRenderer.renderTooltip(screen, gridRenderer, mx, my);
         }
     }
 

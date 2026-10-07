@@ -104,6 +104,9 @@ public class WeakChunkClearService {
     }
 
     public void onServerStopping(FMLServerStoppingEvent event) {
+        for (ClearJob job : jobs) {
+            job.releaseEntitySnapshot();
+        }
         jobs.clear();
         activeJobs.clear();
         queuedEntities = 0;
@@ -116,6 +119,7 @@ public class WeakChunkClearService {
             ClearJob job = iterator.next();
             if (job.world == event.world) {
                 iterator.remove();
+                job.releaseEntitySnapshot();
                 activeJobs.remove(job.key);
                 queuedEntities -= job.targetCount;
             }
@@ -126,6 +130,7 @@ public class WeakChunkClearService {
         if (!activeJobs.remove(job.key)) {
             return;
         }
+        job.releaseEntitySnapshot();
         queuedEntities -= job.targetCount;
         String message = queueFull ? "flamechunk.command.weakclear.queue_full"
             : removedAny ? "flamechunk.command.weakclear.completed" : "flamechunk.command.weakclear.stale";
@@ -155,6 +160,8 @@ public class WeakChunkClearService {
         public final String typeId;
         public final ArrayDeque<Entity> targets;
         public final Set<Entity> selectedEntities = Collections.newSetFromMap(new IdentityHashMap<>());
+        private List<Entity> entitySnapshot;
+        public int retainedEntityCount;
         public int targetCount;
         public int inspected;
         public int removed;
@@ -224,8 +231,17 @@ public class WeakChunkClearService {
         }
 
         public void scanEntities(int inspectionBudget) {
-            List<Entity> entities = world.loadedEntityList;
             int inspectionLimit = Math.max(0, ServerConfig.weakChunkMaximumScannedEntities);
+            if (entitySnapshot == null) {
+                List<Entity> loadedEntities = world.loadedEntityList;
+                entitySnapshot = WeakEntitySnapshotBudget.capture(loadedEntities, inspectionLimit);
+                retainedEntityCount = entitySnapshot.size();
+                if (loadedEntities.size() > entitySnapshot.size()) {
+                    complete = true;
+                    return;
+                }
+            }
+            List<Entity> entities = entitySnapshot;
             int inspectedThisTick = 0;
             while (inspectedThisTick < inspectionBudget && inspected < inspectionLimit && inspected < entities.size()) {
                 Entity entity = entities.get(inspected++);
@@ -258,6 +274,12 @@ public class WeakChunkClearService {
 
         public boolean complete() {
             return complete;
+        }
+
+        public void releaseEntitySnapshot() {
+            WeakEntitySnapshotBudget.release(retainedEntityCount);
+            retainedEntityCount = 0;
+            entitySnapshot = null;
         }
     }
 }

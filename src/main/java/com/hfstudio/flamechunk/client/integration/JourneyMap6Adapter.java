@@ -4,9 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
@@ -26,18 +23,12 @@ import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.IClientPlugin;
 import journeymap.api.v2.client.display.DisplayType;
 import journeymap.api.v2.client.display.PolygonOverlay;
-import journeymap.api.v2.client.event.FullscreenDisplayEvent.CustomToolbarEvent;
-import journeymap.api.v2.client.event.FullscreenRenderEvent;
 import journeymap.api.v2.client.event.PopupMenuEvent.FullscreenPopupMenuEvent;
-import journeymap.api.v2.client.fullscreen.CustomToolBarBuilder;
-import journeymap.api.v2.client.fullscreen.IThemeButton;
-import journeymap.api.v2.client.fullscreen.IThemeToolBar;
 import journeymap.api.v2.client.fullscreen.ModPopupMenu;
 import journeymap.api.v2.client.model.MapPolygon;
 import journeymap.api.v2.client.model.ShapeProperties;
 import journeymap.api.v2.common.Context;
 import journeymap.api.v2.common.JourneyMapPlugin;
-import journeymap.api.v2.common.event.FullscreenEventRegistry;
 import journeymap.api.v2.common.util.BlockPos;
 
 @JourneyMapPlugin(apiVersion = "2.0.0", require = false)
@@ -49,9 +40,6 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<PolygonOverlay>> overlaysByPosition = new Int2ObjectOpenHashMap<>();
     public MapOverlayModel previousModel = ClientMapOverlayState.emptyModel();
     public long previousDisplaySettings = displaySettings();
-    public IThemeToolBar toolbar;
-    public IThemeButton scanButton;
-    public int previousScanButtonState = Integer.MIN_VALUE;
 
     @Override
     @Optional.Method(modid = "journeymap_api")
@@ -64,16 +52,13 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     public void initialize(@NotNull IClientAPI value) {
         api = value;
         MapOverlayApi.register(this);
-        FullscreenEventRegistry.FULLSCREEN_POPUP_MENU_EVENT.subscribe(this, FlameChunk.MODID, this::addPopupMenuItems);
-        FullscreenEventRegistry.CUSTOM_TOOLBAR_UPDATE_EVENT.subscribe(this, FlameChunk.MODID, this::addToolbar);
-        FullscreenEventRegistry.FULLSCREEN_RENDER_EVENT.subscribe(this, FlameChunk.MODID, this::renderScanProgress);
         publish(ClientMapOverlayState.get());
         FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");
         MapOverlayControls.requestWeakSnapshot();
     }
 
     @Optional.Method(modid = "journeymap_api")
-    public void addPopupMenuItems(FullscreenPopupMenuEvent event) {
+    public static void addPopupMenuItems(FullscreenPopupMenuEvent event) {
         if (event.getFullscreen() == null || event.getFullscreen()
             .getUiState() == null) {
             return;
@@ -100,76 +85,6 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
                 }
             }
         });
-    }
-
-    @Optional.Method(modid = "journeymap_api")
-    public void addToolbar(CustomToolbarEvent event) {
-        if (event.getFullscreen() == null || event.getFullscreen()
-            .getScreen() == null) {
-            return;
-        }
-        CustomToolBarBuilder builder = event.getCustomToolBarBuilder();
-        scanButton = builder
-            .getThemeButton("search", (ResourceLocation) null, button -> MapOverlayControls.toggleScan());
-        scanButton.setLabels(MapOverlayControls.scanMenuLabel(), MapOverlayControls.scanMenuLabel());
-        scanButton.setTooltip(StatCollector.translateToLocal("flamechunk.client.scan"));
-        IThemeButton clearButton = builder
-            .getThemeButton("close", (ResourceLocation) null, button -> MapOverlayControls.clear());
-        String clearLabel = StatCollector.translateToLocal("flamechunk.client.journeymap.clear");
-        clearButton.setLabels(clearLabel, clearLabel);
-        clearButton.setTooltip(clearLabel);
-        toolbar = builder.getNewToolbar(scanButton, clearButton);
-        toolbar.setLayoutHorizontal(
-            6,
-            event.getFullscreen()
-                .getScreen().height - 26,
-            4,
-            false);
-        previousScanButtonState = Integer.MIN_VALUE;
-        updateScanButton();
-    }
-
-    @Optional.Method(modid = "journeymap_api")
-    public void renderScanProgress(FullscreenRenderEvent event) {
-        if (toolbar == null || event.getFullscreen() == null) {
-            return;
-        }
-        updateScanButton();
-        if (!MapOverlayControls.isScanning()) {
-            return;
-        }
-        GuiScreen screen = event.getFullscreen()
-            .getScreen();
-        if (screen == null || Minecraft.getMinecraft().currentScreen != screen) {
-            return;
-        }
-        int width = toolbar.getWidth();
-        int x = toolbar.getX();
-        int y = toolbar.getY() - 6;
-        float progress = Math.max(0.0F, Math.min(1.0F, MapOverlayControls.scanProgress()));
-        Gui.drawRect(x, y, x + width, y + 3, ColorUtils.PANEL_BACKGROUND.getColor());
-        int progressWidth = Math.round(width * progress);
-        if (progressWidth > 0) {
-            Gui.drawRect(x, y, x + progressWidth, y + 3, ColorUtils.HEAT_LOW.getColor());
-        }
-    }
-
-    @Optional.Method(modid = "journeymap_api")
-    public void updateScanButton() {
-        if (scanButton == null) {
-            return;
-        }
-        boolean scanning = MapOverlayControls.isScanning();
-        boolean pending = MapOverlayControls.hasPendingScan();
-        int state = scanning ? 1000 + Math.round(MapOverlayControls.scanProgress() * 100.0F) : pending ? -1 : 0;
-        if (state == previousScanButtonState) {
-            return;
-        }
-        String label = MapOverlayControls.scanMenuLabel();
-        scanButton.setLabels(label, label);
-        scanButton.setTooltip(label);
-        scanButton.setEnabled(scanning || !pending);
-        previousScanButtonState = state;
     }
 
     @Override

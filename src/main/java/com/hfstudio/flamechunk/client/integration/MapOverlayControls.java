@@ -231,6 +231,23 @@ public class MapOverlayControls {
             requestStop();
         } else if (!hasPendingScan()) {
             requestScan();
+            reportMapScanFailure();
+        }
+    }
+
+    private static void reportMapScanFailure() {
+        ClientSnapshotStorage storage = clientStorage();
+        if (storage == null) {
+            return;
+        }
+        int status = storage.getStatus();
+        if (status != ScanProgressPacket.LOCAL_GAME_PAUSED && status != ScanProgressPacket.SERVER_UNAVAILABLE) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getMinecraft();
+        if (minecraft.ingameGUI != null) {
+            minecraft.ingameGUI.getChatGUI()
+                .printChatMessage(new ChatComponentTranslation("flamechunk.client.scanStatus." + status));
         }
     }
 

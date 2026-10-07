@@ -39,6 +39,9 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
     @Override
     public LayerRenderer addLayerRenderer(InteractableLayerManager manager, SupportedMods mod) {
+        if (mod == SupportedMods.XaeroMiniMap) {
+            return null;
+        }
         UniversalInteractableRenderer renderer = new UniversalInteractableRenderer(manager);
         renderer.withRenderStep(location -> new CellRenderStep(this, (CellLocation) location));
         if (Mods.JourneyMap6.isModLoaded()) {
@@ -63,34 +66,51 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
         if (tiles == null) {
             return locations;
         }
-        for (Long2ObjectMap.Entry<List<MapOverlayCell>> tileEntry : tiles.long2ObjectEntrySet()) {
-            int tileX = (int) (tileEntry.getLongKey() >> 32);
-            int tileZ = (int) tileEntry.getLongKey();
-            int tileMinX = tileX * MapOverlayModel.TILE_BLOCKS;
-            int tileMinZ = tileZ * MapOverlayModel.TILE_BLOCKS;
-            int tileMaxX = tileMinX + MapOverlayModel.TILE_BLOCKS - 1;
-            int tileMaxZ = tileMinZ + MapOverlayModel.TILE_BLOCKS - 1;
-            if (tileMinX > maxBlockX || tileMaxX < minBlockX || tileMinZ > maxBlockZ || tileMaxZ < minBlockZ) {
-                continue;
-            }
-            boolean hasAnchor = false;
-            for (MapOverlayCell cell : tileEntry.getValue()) {
-                int cellMinX = cell.getChunkX() << 4;
-                int cellMinZ = cell.getChunkZ() << 4;
-                int cellMaxX = cellMinX + 15;
-                int cellMaxZ = cellMinZ + 15;
-                if (cellMinX > maxBlockX || cellMaxX < minBlockX || cellMinZ > maxBlockZ || cellMaxZ < minBlockZ) {
-                    continue;
+        int minTileX = Math.floorDiv(minBlockX, MapOverlayModel.TILE_BLOCKS);
+        int minTileZ = Math.floorDiv(minBlockZ, MapOverlayModel.TILE_BLOCKS);
+        int maxTileX = Math.floorDiv(maxBlockX, MapOverlayModel.TILE_BLOCKS);
+        int maxTileZ = Math.floorDiv(maxBlockZ, MapOverlayModel.TILE_BLOCKS);
+        long tileWidth = (long) maxTileX - minTileX + 1L;
+        long tileHeight = (long) maxTileZ - minTileZ + 1L;
+        if (tileWidth > 0L && tileHeight > 0L && tileWidth * tileHeight <= tiles.size()) {
+            for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
+                    List<MapOverlayCell> tileCells = tiles.get(MapOverlayModel.key(tileX, tileZ));
+                    if (tileCells != null) {
+                        addVisibleTile(locations, tileCells, minBlockX, minBlockZ, maxBlockX, maxBlockZ);
+                    }
                 }
-                locations.add(new CellLocation(cell));
-                visibleCellKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
-                if (!hasAnchor) {
-                    batchAnchorKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
-                    hasAnchor = true;
+            }
+        } else {
+            for (Long2ObjectMap.Entry<List<MapOverlayCell>> tileEntry : tiles.long2ObjectEntrySet()) {
+                int tileX = (int) (tileEntry.getLongKey() >> 32);
+                int tileZ = (int) tileEntry.getLongKey();
+                if (tileX >= minTileX && tileX <= maxTileX && tileZ >= minTileZ && tileZ <= maxTileZ) {
+                    addVisibleTile(locations, tileEntry.getValue(), minBlockX, minBlockZ, maxBlockX, maxBlockZ);
                 }
             }
         }
         return locations;
+    }
+
+    private void addVisibleTile(List<CellLocation> locations, List<MapOverlayCell> tileCells, int minBlockX,
+        int minBlockZ, int maxBlockX, int maxBlockZ) {
+        boolean hasAnchor = false;
+        for (MapOverlayCell cell : tileCells) {
+            int cellMinX = cell.getChunkX() << 4;
+            int cellMinZ = cell.getChunkZ() << 4;
+            int cellMaxX = cellMinX + 15;
+            int cellMaxZ = cellMinZ + 15;
+            if (cellMinX > maxBlockX || cellMaxX < minBlockX || cellMinZ > maxBlockZ || cellMaxZ < minBlockZ) {
+                continue;
+            }
+            locations.add(new CellLocation(cell));
+            visibleCellKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
+            if (!hasAnchor) {
+                batchAnchorKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
+                hasAnchor = true;
+            }
+        }
     }
 
     @Override
@@ -107,8 +127,28 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
             model = publishedModel;
             return;
         }
+        MapOverlayModel previousModel = model;
+        List<MapOverlayCell> previousCells = previousModel.getCells();
+        int removedCells = 0;
+        for (MapOverlayCell cell : previousCells) {
+            if (publishedModel.find(cell.getDimensionId(), cell.getChunkX(), cell.getChunkZ()) == null) {
+                removedCells++;
+            }
+        }
         model = publishedModel;
-        forceRefresh();
+        if (removedCells == 0) {
+            forceRefresh();
+            return;
+        }
+        if (removedCells > previousCells.size() / 2) {
+            clearFullCache();
+            return;
+        }
+        for (MapOverlayCell cell : previousCells) {
+            if (publishedModel.find(cell.getDimensionId(), cell.getChunkX(), cell.getChunkZ()) == null) {
+                invalidateLocation(cell.getDimensionId(), cell.getChunkX(), cell.getChunkZ());
+            }
+        }
     }
 
     public boolean isBatchAnchor(CellLocation location) {

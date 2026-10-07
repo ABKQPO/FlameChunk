@@ -16,6 +16,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
+import net.minecraftforge.event.world.WorldEvent;
 
 import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
@@ -61,7 +62,11 @@ public class WeakChunkInspector {
 
     @SubscribeEvent
     public void onWorldTick(WorldTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !ServerConfig.weakChunkDiagnostics) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (!ServerConfig.weakChunkDiagnostics) {
+            clearStates();
             return;
         }
         World world = event.world;
@@ -77,7 +82,7 @@ public class WeakChunkInspector {
             if (++state.ticksSinceScan < ServerConfig.weakChunkCheckIntervalTicks) {
                 return;
             }
-            state.begin();
+            state.begin(world, ServerConfig.weakChunkMaximumScannedEntities);
         }
         if (state.scan(world, ServerConfig.weakChunkEntitiesPerTick, ServerConfig.weakChunkMaximumScannedEntities)) {
             WeakChunkSnapshot snapshot = state.finish(world.provider.dimensionId, world.getTotalWorldTime());
@@ -94,6 +99,21 @@ public class WeakChunkInspector {
     public void onServerStopping(FMLServerStoppingEvent event) {
         snapshotRequests.clear();
         snapshotRequestCount.set(0);
+        clearStates();
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        ScanState state = states.remove(event.world);
+        if (state != null) {
+            state.releaseEntitySnapshot();
+        }
+    }
+
+    public void clearStates() {
+        for (ScanState state : states.values()) {
+            state.releaseEntitySnapshot();
+        }
         states.clear();
     }
 
@@ -262,9 +282,12 @@ public class WeakChunkInspector {
 
         public final Long2IntOpenHashMap entityCounts = new Long2IntOpenHashMap();
         public final Long2ObjectOpenHashMap<Object2IntOpenHashMap<String>> typeCounts = new Long2ObjectOpenHashMap<>();
+        private List<Entity> entitySnapshot = Collections.emptyList();
+        private boolean snapshotCaptured;
         public boolean scanning;
         public int cursor;
         public int inspected;
+        public int retainedEntityCount;
         public int ticksSinceScan;
         public boolean truncated;
         public WeakChunkSnapshot latestSnapshot;
@@ -279,12 +302,31 @@ public class WeakChunkInspector {
             inspected = 0;
             truncated = false;
             ticksSinceScan = 0;
+            releaseEntitySnapshot();
+            entitySnapshot = Collections.emptyList();
+            snapshotCaptured = false;
             entityCounts.clear();
             typeCounts.clear();
         }
 
-        public boolean scan(World world, int entitiesPerTick, int maximumEntities) {
+        private void begin(World world, int maximumEntities) {
+            begin();
             List<Entity> entities = world.loadedEntityList;
+            entitySnapshot = WeakEntitySnapshotBudget.capture(entities, maximumEntities);
+            retainedEntityCount = entitySnapshot.size();
+            snapshotCaptured = true;
+            truncated = entities.size() > entitySnapshot.size();
+        }
+
+        public void releaseEntitySnapshot() {
+            WeakEntitySnapshotBudget.release(retainedEntityCount);
+            retainedEntityCount = 0;
+            entitySnapshot = Collections.emptyList();
+            snapshotCaptured = false;
+        }
+
+        public boolean scan(World world, int entitiesPerTick, int maximumEntities) {
+            List<Entity> entities = snapshotCaptured ? entitySnapshot : world.loadedEntityList;
             int limit = Math.min(entities.size(), Math.min(maximumEntities, cursor + entitiesPerTick));
             while (cursor < limit) {
                 Entity entity = entities.get(cursor++);
@@ -346,6 +388,7 @@ public class WeakChunkInspector {
             }
             latestSnapshot = new WeakChunkSnapshot(dimensionId, generatedAtTick, truncated, chunks);
             scanning = false;
+            releaseEntitySnapshot();
             return latestSnapshot;
         }
 

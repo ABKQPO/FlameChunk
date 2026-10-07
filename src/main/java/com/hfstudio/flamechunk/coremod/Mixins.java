@@ -11,14 +11,20 @@ public enum Mixins implements IMixins {
         "MixinEventBus", "ASMEventHandlerAccessor"),
     XAERO_WORLD_MAP(new MixinBuilder("Xaero World Map heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.XaeroWorldMap)
+        .setApplyIf(Mods.XaeroWorldMap::isModLoaded)
         .addClientMixins("xaero.MixinGuiMap")),
     XAERO_MINIMAP(new MixinBuilder("Xaero Minimap heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.XaeroMinimap)
+        .setApplyIf(Mods.XaeroMinimap::isModLoaded)
         .addClientMixins("xaero.MixinMinimapProcessor")),
     JOURNEYMAP_5(new MixinBuilder("JourneyMap 5 heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.JourneyMap5)
         .setApplyIf(Mods.JourneyMap5::isModLoaded)
-        .addClientMixins("journeymap.MixinFullscreen", "journeymap.MixinMiniMap")),;
+        .addClientMixins("journeymap.MixinFullscreen", "journeymap.MixinMiniMap")),
+    JOURNEYMAP_6(new MixinBuilder("JourneyMap 6 heatmap controls").setPhase(Phase.LATE)
+        .addRequiredMod(Mods.JourneyMap6)
+        .setApplyIf(Mods.JourneyMap6::isModLoaded)
+        .addClientMixins("journeymap6.MixinFullscreen", "journeymap6.MixinPopupMenuEventHandler")),;
 
     public final MixinBuilder builder;
 

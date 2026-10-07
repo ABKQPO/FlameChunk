@@ -63,7 +63,7 @@ public class NavigatorMapBridge {
 
     @Optional.Method(modid = "navigator")
     public static boolean navigatorOwnsXaeroMinimap() {
-        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroMiniMap);
+        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroWorldMap);
     }
 
     @Optional.Method(modid = "navigator")
