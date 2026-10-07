@@ -16,10 +16,10 @@ public class ScanRequestPacket implements IMessage {
     public static final int UNSUBSCRIBE_REQUEST = -4;
     public static final int SUBSCRIBE_WORLD_REQUEST = -5;
 
-    private int seconds;
-    private boolean valid = true;
-    private boolean protocolMismatch;
-    private boolean weakSnapshotRequest;
+    public int seconds;
+    public boolean valid = true;
+    public boolean protocolMismatch;
+    public boolean weakSnapshotRequest;
 
     public ScanRequestPacket() {}
 

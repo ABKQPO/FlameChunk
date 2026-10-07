@@ -5,13 +5,17 @@ import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.culling.ClippingHelperImpl;
 import net.minecraft.client.renderer.culling.Frustrum;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.IIcon;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
@@ -19,6 +23,7 @@ import net.minecraftforge.client.event.RenderWorldLastEvent;
 import org.lwjgl.opengl.GL11;
 
 import com.hfstudio.flamechunk.client.config.ClientConfig;
+import com.hfstudio.flamechunk.client.integration.ClientMapIntegrations;
 import com.hfstudio.flamechunk.client.storage.ClientSnapshotStorage;
 import com.hfstudio.flamechunk.common.data.ChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
@@ -26,33 +31,32 @@ import com.hfstudio.flamechunk.common.data.ObjectHotspot;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
-import com.hfstudio.flamechunk.common.integration.Mods;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public class WorldPerformanceOverlay {
 
-    private static final int MAX_MARKERS = 96;
-    private static final int MAX_BEAMS = 32;
-    private static final int MAX_LABELS = 16;
-    private static final int CAPTURE_INTERVAL_FRAMES = 4;
-    private static final double MAX_DISTANCE_SQUARED = 48.0D * 48.0D;
-    private static final float MINIMUM_VISIBLE_MSPT = 0.05F;
+    public static final int MAX_MARKERS = 96;
+    public static final int MAX_BEAMS = 32;
+    public static final int MAX_LABELS = 16;
+    public static final int CAPTURE_INTERVAL_FRAMES = 4;
+    public static final double MAX_DISTANCE_SQUARED = 48.0D * 48.0D;
+    public static final float MINIMUM_VISIBLE_MSPT = 0.05F;
 
-    private final ClientSnapshotStorage storage;
+    public final ClientSnapshotStorage storage;
     public List<ObjectHotspot> hotspots = Collections.emptyList();
     public Frustrum frustum;
-    private final Marker[] markers = new Marker[MAX_MARKERS];
-    private final Beam[] beams = new Beam[MAX_BEAMS];
-    private final ColorCalculator colorCalculator = new ColorCalculator();
-    private ScanSnapshot indexedSnapshot;
-    private WeakChunkSnapshot indexedWeakSnapshot;
-    private int indexedDimension = Integer.MIN_VALUE;
-    private long sampledTicks;
-    private int markerCount;
-    private int beamCount;
-    private int captureFrame;
+    public final Marker[] markers = new Marker[MAX_MARKERS];
+    public final Beam[] beams = new Beam[MAX_BEAMS];
+    public final ColorCalculator colorCalculator = new ColorCalculator();
+    public ScanSnapshot indexedSnapshot;
+    public WeakChunkSnapshot indexedWeakSnapshot;
+    public int indexedDimension = Integer.MIN_VALUE;
+    public long sampledTicks;
+    public int markerCount;
+    public int beamCount;
+    public int captureFrame;
 
     public WorldPerformanceOverlay(ClientSnapshotStorage storage) {
         this.storage = storage;
@@ -79,7 +83,7 @@ public class WorldPerformanceOverlay {
         Minecraft minecraft = Minecraft.getMinecraft();
         World world = minecraft.theWorld;
         Entity viewEntity = minecraft.renderViewEntity;
-        if (!ClientConfig.worldOverlayEnabled || !Mods.hasMapIntegration()
+        if (!ClientConfig.worldOverlayEnabled || !ClientMapIntegrations.hasMapIntegration()
             || storage == null
             || world == null
             || viewEntity == null) {
@@ -107,7 +111,7 @@ public class WorldPerformanceOverlay {
         renderMarkers(viewEntity, event.partialTicks);
     }
 
-    private void rebuildIndex(ScanSnapshot snapshot, WeakChunkSnapshot weakSnapshot, int dimensionId) {
+    public void rebuildIndex(ScanSnapshot snapshot, WeakChunkSnapshot weakSnapshot, int dimensionId) {
         clearOverlay();
         hotspots = Collections.emptyList();
         if (snapshot != null && snapshot.getSampledTicks() > 0L) {
@@ -127,7 +131,7 @@ public class WorldPerformanceOverlay {
         indexedDimension = dimensionId;
     }
 
-    private void captureMarkers(World world, Entity viewEntity) {
+    public void captureMarkers(World world, Entity viewEntity) {
         clearMarkers();
         for (ObjectHotspot hotspot : hotspots) {
             if (markerCount >= MAX_MARKERS) {
@@ -177,7 +181,7 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private void clearMarkers() {
+    public void clearMarkers() {
         markerCount = 0;
         for (Marker marker : markers) {
             marker.entity = null;
@@ -189,12 +193,12 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private void clearOverlay() {
+    public void clearOverlay() {
         clearMarkers();
         beamCount = 0;
     }
 
-    private void addWeakBeams(WeakChunkSnapshot snapshot) {
+    public void addWeakBeams(WeakChunkSnapshot snapshot) {
         if (snapshot == null) {
             return;
         }
@@ -206,7 +210,7 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private void addPerformanceBeams(ScanSnapshot snapshot, int dimensionId) {
+    public void addPerformanceBeams(ScanSnapshot snapshot, int dimensionId) {
         if (snapshot == null || sampledTicks <= 0L) {
             return;
         }
@@ -236,7 +240,7 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private void addBeam(int chunkX, int chunkZ, int color, double score) {
+    public void addBeam(int chunkX, int chunkZ, int color, double score) {
         for (int index = 0; index < beamCount; index++) {
             Beam beam = beams[index];
             if (beam.chunkX == chunkX && beam.chunkZ == chunkZ) {
@@ -264,7 +268,7 @@ public class WorldPerformanceOverlay {
         beam.score = score;
     }
 
-    private void addMarker(Entity entity, TileEntity tileEntity, ObjectHotspot hotspot) {
+    public void addMarker(Entity entity, TileEntity tileEntity, ObjectHotspot hotspot) {
         if (sampledTicks <= 0L) {
             return;
         }
@@ -307,7 +311,7 @@ public class WorldPerformanceOverlay {
         marker.color = colorCalculator.colorForMspt(marker.mspt, ClientConfig.heatThresholdMspt);
     }
 
-    private void renderMarkers(Entity viewEntity, float partialTicks) {
+    public void renderMarkers(Entity viewEntity, float partialTicks) {
         if (markerCount == 0 && beamCount == 0) {
             return;
         }
@@ -338,7 +342,65 @@ public class WorldPerformanceOverlay {
             GL11.glEnd();
             GL11.glPopAttrib();
         }
+        renderFlames(viewEntity, cameraX, cameraY, cameraZ);
         renderLabels(viewEntity, cameraX, cameraY, cameraZ);
+    }
+
+    public void renderFlames(Entity viewEntity, double cameraX, double cameraY, double cameraZ) {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        IIcon sprite = Blocks.fire.getIcon(0, 0);
+        if (sprite == null) {
+            return;
+        }
+        GL11.glPushAttrib(
+            GL11.GL_ENABLE_BIT | GL11.GL_TEXTURE_BIT
+                | GL11.GL_CURRENT_BIT
+                | GL11.GL_COLOR_BUFFER_BIT
+                | GL11.GL_DEPTH_BUFFER_BIT);
+        try {
+            minecraft.getTextureManager()
+                .bindTexture(TextureMap.locationBlocksTexture);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glDepthMask(false);
+            double yaw = Math.toRadians(viewEntity.rotationYaw);
+            double rightX = Math.cos(yaw);
+            double rightZ = Math.sin(yaw);
+            Tessellator tessellator = Tessellator.instance;
+            tessellator.startDrawingQuads();
+            for (int index = 0; index < markerCount; index++) {
+                Marker marker = markers[index];
+                if (!isVisible(marker, viewEntity)) {
+                    continue;
+                }
+                AxisAlignedBB bounds = marker.currentBounds();
+                double x = (bounds.minX + bounds.maxX) * 0.5D - cameraX;
+                double z = (bounds.minZ + bounds.maxZ) * 0.5D - cameraZ;
+                double bottom = bounds.minY - cameraY;
+                double size = Math
+                    .max(0.4D, Math.min(2.5D, Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ)));
+                double height = Math.max(size, Math.min(4.0D, bounds.maxY - bounds.minY + 0.5D));
+                tessellator.setColorRGBA_I(marker.color, ColorUtils.alpha(ColorUtils.FLAME_OPACITY));
+                for (int layer = 0; layer < 4; layer++) {
+                    double base = bottom + height * layer * 0.2D;
+                    double half = size * (0.6D - layer * 0.1D);
+                    double top = base + height * 0.45D;
+                    double minU = (layer & 1) == 0 ? sprite.getMinU() : sprite.getMaxU();
+                    double maxU = (layer & 1) == 0 ? sprite.getMaxU() : sprite.getMinU();
+                    tessellator.addVertexWithUV(x - rightX * half, base, z - rightZ * half, minU, sprite.getMaxV());
+                    tessellator.addVertexWithUV(x + rightX * half, base, z + rightZ * half, maxU, sprite.getMaxV());
+                    tessellator.addVertexWithUV(x + rightX * half, top, z + rightZ * half, maxU, sprite.getMinV());
+                    tessellator.addVertexWithUV(x - rightX * half, top, z - rightZ * half, minU, sprite.getMinV());
+                }
+            }
+            tessellator.draw();
+        } finally {
+            GL11.glPopAttrib();
+        }
     }
 
     public void renderGeometry(Entity viewEntity, double cameraX, double cameraY, double cameraZ) {
@@ -379,7 +441,7 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private void renderLabels(Entity viewEntity, double cameraX, double cameraY, double cameraZ) {
+    public void renderLabels(Entity viewEntity, double cameraX, double cameraY, double cameraZ) {
         Minecraft minecraft = Minecraft.getMinecraft();
         int labels = Math.min(markerCount, MAX_LABELS);
         GL11.glPushAttrib(
@@ -425,7 +487,7 @@ public class WorldPerformanceOverlay {
         }
     }
 
-    private static void drawBox(AxisAlignedBB box, double cameraX, double cameraY, double cameraZ) {
+    public static void drawBox(AxisAlignedBB box, double cameraX, double cameraY, double cameraZ) {
         double minX = box.minX - cameraX;
         double minY = box.minY - cameraY;
         double minZ = box.minZ - cameraZ;
@@ -446,12 +508,12 @@ public class WorldPerformanceOverlay {
         line(minX, minY, maxZ, minX, maxY, maxZ);
     }
 
-    private static void line(double x1, double y1, double z1, double x2, double y2, double z2) {
+    public static void line(double x1, double y1, double z1, double x2, double y2, double z2) {
         GL11.glVertex3d(x1, y1, z1);
         GL11.glVertex3d(x2, y2, z2);
     }
 
-    private static double distanceSquared(double x, double y, double z, Entity entity) {
+    public static double distanceSquared(double x, double y, double z, Entity entity) {
         double dx = x - entity.posX;
         double dy = y - entity.posY;
         double dz = z - entity.posZ;
@@ -470,7 +532,7 @@ public class WorldPerformanceOverlay {
             viewEntity) <= MAX_DISTANCE_SQUARED && frustum.isBoundingBoxInFrustum(bounds);
     }
 
-    private static String displayType(String typeName) {
+    public static String displayType(String typeName) {
         return typeName.length() <= 30 ? typeName : typeName.substring(0, 27) + "...";
     }
 

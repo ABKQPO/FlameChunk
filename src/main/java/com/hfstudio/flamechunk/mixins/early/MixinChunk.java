@@ -13,7 +13,7 @@ import com.hfstudio.flamechunk.server.guard.EntityLoadGuard;
 public abstract class MixinChunk {
 
     @Inject(method = "onChunkLoad", at = @At("RETURN"))
-    public void flamechunk$checkEntityLoad(CallbackInfo callbackInfo) {
+    private void flamechunk$checkEntityLoad(CallbackInfo callbackInfo) {
         EntityLoadGuard.checkChunk((Chunk) (Object) this);
     }
 }

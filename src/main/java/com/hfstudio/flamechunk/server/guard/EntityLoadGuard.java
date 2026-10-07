@@ -26,11 +26,11 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class EntityLoadGuard {
 
-    private static final int MAX_TRACKED_CHUNKS = 8192;
-    private static final int MAX_DIAGNOSTIC_ENTITIES = 100000;
+    public static final int MAX_TRACKED_CHUNKS = 8192;
+    public static final int MAX_DIAGNOSTIC_ENTITIES = 100000;
 
-    private final ServerUtilitiesBridge serverUtilities;
-    private long tickCounter;
+    public final ServerUtilitiesBridge serverUtilities;
+    public long tickCounter;
 
     public EntityLoadGuard(ServerUtilitiesBridge serverUtilities) {
         this.serverUtilities = serverUtilities;
@@ -181,20 +181,20 @@ public class EntityLoadGuard {
         }
     }
 
-    private static long pack(int chunkX, int chunkZ) {
+    public static long pack(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL);
     }
 
-    private static int unpackX(long key) {
+    public static int unpackX(long key) {
         return (int) (key >> 32);
     }
 
-    private static int unpackZ(long key) {
+    public static int unpackZ(long key) {
         return (int) key;
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Entity> entities(List<?> section) {
+    public static List<Entity> entities(List<?> section) {
         return (List<Entity>) section;
     }
 

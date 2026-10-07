@@ -9,10 +9,10 @@ public class ChunkTypeTiming {
 
     public static final int MAX_TYPE_NAME_LENGTH = 64;
 
-    private final TickCategory category;
-    private final String typeName;
-    private final long nanos;
-    private final int count;
+    public final TickCategory category;
+    public final String typeName;
+    public final long nanos;
+    public final int count;
     public final long peakNanos;
 
     public ChunkTypeTiming(TickCategory category, String typeName, long nanos, int count) {

@@ -24,9 +24,9 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 public class CrashReportDiagnostics {
 
-    private static final int MAX_TICKETS_INSPECTED = 8192;
-    private static final int MAX_ENTITIES_INSPECTED = 100000;
-    private static final int MAX_OWNERS_REPORTED = 64;
+    public static final int MAX_TICKETS_INSPECTED = 8192;
+    public static final int MAX_ENTITIES_INSPECTED = 100000;
+    public static final int MAX_OWNERS_REPORTED = 64;
 
     public static void append(CrashReport report, MinecraftServer server) {
         if (!ServerConfig.watchdogTicketDiagnostics || report == null
@@ -61,11 +61,11 @@ public class CrashReportDiagnostics {
         }
     }
 
-    private static String dimensionId(WorldServer world) {
+    public static String dimensionId(WorldServer world) {
         return world == null || world.provider == null ? "unknown" : Integer.toString(world.provider.dimensionId);
     }
 
-    private static String formatDimension(WorldServer world) {
+    public static String formatDimension(WorldServer world) {
         ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets = ForgeChunkManager
             .getPersistentChunksFor(world);
         Long2IntOpenHashMap entityCounts = entityCounts(world);
@@ -132,7 +132,7 @@ public class CrashReportDiagnostics {
         return result.toString();
     }
 
-    private static Long2IntOpenHashMap entityCounts(WorldServer world) {
+    public static Long2IntOpenHashMap entityCounts(WorldServer world) {
         Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
         counts.defaultReturnValue(0);
         int inspected = 0;
@@ -147,7 +147,7 @@ public class CrashReportDiagnostics {
         return counts;
     }
 
-    private static String ticketSource(ForgeChunkManager.Ticket ticket) {
+    public static String ticketSource(ForgeChunkManager.Ticket ticket) {
         if (ticket.isPlayerTicket()) {
             return "player:" + ticket.getPlayerName();
         }
@@ -164,7 +164,7 @@ public class CrashReportDiagnostics {
         return (modId == null || modId.length() == 0 ? "unknown" : modId) + ":" + ticketType;
     }
 
-    private static String join(List<String> values) {
+    public static String join(List<String> values) {
         StringBuilder result = new StringBuilder();
         for (String value : values) {
             if (result.length() > 0) {
@@ -175,7 +175,7 @@ public class CrashReportDiagnostics {
         return result.toString();
     }
 
-    private static long pack(int chunkX, int chunkZ) {
+    public static long pack(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL);
     }
 

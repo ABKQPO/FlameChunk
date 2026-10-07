@@ -14,9 +14,9 @@ import lombok.Getter;
 
 public class ClientController {
 
-    private final ClientSnapshotStorage storage;
+    public final ClientSnapshotStorage storage;
     @Getter
-    private final KeyBinding diagnosticKey = new KeyBinding(
+    public final KeyBinding diagnosticKey = new KeyBinding(
         "key.flamechunk.diagnostic",
         Keyboard.KEY_F8,
         "key.categories.flamechunk");

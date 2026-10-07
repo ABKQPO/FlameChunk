@@ -11,12 +11,12 @@ import lombok.Getter;
 public class DimensionSnapshot {
 
     @Getter
-    private final int dimensionId;
-    private final ChunkSnapshot[] chunks;
-    private final long[] globalNanos;
-    private final int[] globalCounts;
+    public final int dimensionId;
+    public final ChunkSnapshot[] chunks;
+    public final long[] globalNanos;
+    public final int[] globalCounts;
     @Getter
-    private final List<ChunkTypeTiming> globalTypeTimings;
+    public final List<ChunkTypeTiming> globalTypeTimings;
     public final List<ObjectHotspot> objectHotspots;
 
     public DimensionSnapshot(int dimensionId, ChunkSnapshot[] chunks, long[] globalNanos, int[] globalCounts) {

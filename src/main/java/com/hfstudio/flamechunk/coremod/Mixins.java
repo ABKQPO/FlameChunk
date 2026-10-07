@@ -19,7 +19,7 @@ public enum Mixins implements IMixins {
         .setApplyIf(Mods.JourneyMap5::isModLoaded)
         .addClientMixins("journeymap.MixinFullscreen")),;
 
-    private final MixinBuilder builder;
+    public final MixinBuilder builder;
 
     Mixins(MixinBuilder builder) {
         this.builder = builder;

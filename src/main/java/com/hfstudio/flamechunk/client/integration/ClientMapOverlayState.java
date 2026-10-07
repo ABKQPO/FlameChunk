@@ -4,7 +4,7 @@ import java.util.Collections;
 
 public class ClientMapOverlayState {
 
-    private static volatile MapOverlayModel model = emptyModel();
+    public static volatile MapOverlayModel model = emptyModel();
 
     public static void publish(MapOverlayModel value) {
         model = value == null ? emptyModel() : value;
@@ -18,7 +18,7 @@ public class ClientMapOverlayState {
         return model;
     }
 
-    private static MapOverlayModel emptyModel() {
+    public static MapOverlayModel emptyModel() {
         return new MapOverlayModel(Collections.emptyList());
     }
 }

@@ -144,7 +144,7 @@ public class SnapshotBuilder {
         return new ScanSnapshot(durationSeconds, sampledTicks, snapshots);
     }
 
-    private Long2IntOpenHashMap collectEntityCounts(World world, Long2ObjectOpenHashMap<ChunkTiming> trackedChunks) {
+    public Long2IntOpenHashMap collectEntityCounts(World world, Long2ObjectOpenHashMap<ChunkTiming> trackedChunks) {
         Long2IntOpenHashMap counts = new Long2IntOpenHashMap(trackedChunks.size());
         counts.defaultReturnValue(0);
         for (Entity entity : world.loadedEntityList) {
@@ -162,7 +162,7 @@ public class SnapshotBuilder {
         return counts;
     }
 
-    private static byte loadLevel(World world, int chunkX, int chunkZ) {
+    public static byte loadLevel(World world, int chunkX, int chunkZ) {
         if (world == null || world.getChunkProvider() == null) {
             return 32;
         }
@@ -170,7 +170,7 @@ public class SnapshotBuilder {
             .chunkExists(chunkX, chunkZ) ? 0 : 32);
     }
 
-    private static TicketMetadata ticketMetadata(
+    public static TicketMetadata ticketMetadata(
         ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair position) {
         if (!tickets.containsKey(position)) {
             return TicketMetadata.NONE;
@@ -206,14 +206,14 @@ public class SnapshotBuilder {
         return new TicketMetadata(4, trimTicketSource(modId + ":" + type));
     }
 
-    private static int ticketPriority(ForgeChunkManager.Ticket ticket) {
+    public static int ticketPriority(ForgeChunkManager.Ticket ticket) {
         if (ticket.isPlayerTicket()) {
             return 3;
         }
         return ticket.getEntity() == null ? 1 : 2;
     }
 
-    private static String trimTicketSource(String value) {
+    public static String trimTicketSource(String value) {
         return value.length() <= 64 ? value : value.substring(0, 64);
     }
 

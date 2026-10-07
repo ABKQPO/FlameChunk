@@ -48,13 +48,13 @@ import lombok.Getter;
 
 public class ClientProxy extends CommonProxy {
 
-    private final SnapshotCodec snapshotCodec = new SnapshotCodec();
-    private final ZstdCompressionCodec compressionCodec = new ZstdCompressionCodec();
+    public final SnapshotCodec snapshotCodec = new SnapshotCodec();
+    public final ZstdCompressionCodec compressionCodec = new ZstdCompressionCodec();
     @Getter
-    private ClientSnapshotStorage snapshotStorage;
-    private ClientController controller;
-    private ClientMapIntegrations mapIntegrations;
-    private WorldPerformanceOverlay worldPerformanceOverlay;
+    public ClientSnapshotStorage snapshotStorage;
+    public ClientController controller;
+    public ClientMapIntegrations mapIntegrations;
+    public WorldPerformanceOverlay worldPerformanceOverlay;
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
@@ -186,7 +186,7 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private void clearClientState() {
+    public void clearClientState() {
         MapOverlayControls.resetRequestState();
         if (snapshotStorage != null) {
             snapshotStorage.reset();
@@ -199,7 +199,7 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private void showReport(ScanSnapshot snapshot, boolean finalSnapshot) {
+    public void showReport(ScanSnapshot snapshot, boolean finalSnapshot) {
         if (!finalSnapshot) {
             return;
         }
@@ -213,7 +213,7 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private void printReport(ScanSnapshot snapshot) {
+    public void printReport(ScanSnapshot snapshot) {
         Minecraft minecraft = Minecraft.getMinecraft();
         minecraft.ingameGUI.getChatGUI()
             .printChatMessage(

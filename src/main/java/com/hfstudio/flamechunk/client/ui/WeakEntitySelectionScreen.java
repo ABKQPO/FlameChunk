@@ -13,17 +13,17 @@ import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
 
 public class WeakEntitySelectionScreen extends GuiScreen {
 
-    private static final int PAGE_SIZE = 8;
-    private static final int PREVIOUS_BUTTON = -1;
-    private static final int NEXT_BUTTON = -2;
-    private static final int CANCEL_BUTTON = -3;
+    public static final int PAGE_SIZE = 8;
+    public static final int PREVIOUS_BUTTON = -1;
+    public static final int NEXT_BUTTON = -2;
+    public static final int CANCEL_BUTTON = -3;
 
-    private final GuiScreen parent;
-    private final int dimensionId;
-    private final int chunkX;
-    private final int chunkZ;
-    private final List<EntityTypeCount> entityTypes;
-    private int page;
+    public final GuiScreen parent;
+    public final int dimensionId;
+    public final int chunkX;
+    public final int chunkZ;
+    public final List<EntityTypeCount> entityTypes;
+    public int page;
 
     public WeakEntitySelectionScreen(GuiScreen parent, int dimensionId, int chunkX, int chunkZ,
         List<EntityTypeCount> entityTypes) {
@@ -86,7 +86,7 @@ public class WeakEntitySelectionScreen extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button) {
+    public void actionPerformed(GuiButton button) {
         if (button.id == PREVIOUS_BUTTON) {
             page--;
             initGui();
@@ -113,7 +113,7 @@ public class WeakEntitySelectionScreen extends GuiScreen {
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
-    private static String displayType(String typeId) {
+    public static String displayType(String typeId) {
         return typeId.length() <= 30 ? typeId : typeId.substring(0, 27) + "...";
     }
 }

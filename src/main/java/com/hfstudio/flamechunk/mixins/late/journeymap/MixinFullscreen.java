@@ -62,7 +62,7 @@ public abstract class MixinFullscreen {
     @Redirect(
         method = "drawMap",
         at = @At(value = "INVOKE", target = "Ljourneymap/client/render/map/GridRenderer;draw(FDDZ)V"))
-    public void flamechunk$renderHeatmap(GridRenderer renderer, float alpha, double offsetX, double offsetZ,
+    private void flamechunk$renderHeatmap(GridRenderer renderer, float alpha, double offsetX, double offsetZ,
         boolean showGrid) {
         renderer.draw(alpha, offsetX, offsetZ, showGrid);
         JourneyMap5OverlayRenderer.render(renderer, offsetX, offsetZ);

@@ -10,23 +10,23 @@ import lombok.Getter;
 public class ChunkSnapshot {
 
     @Getter
-    private final int dimensionId;
+    public final int dimensionId;
     @Getter
-    private final int chunkX;
+    public final int chunkX;
     @Getter
-    private final int chunkZ;
-    private final long[] nanos;
-    private final int[] counts;
+    public final int chunkZ;
+    public final long[] nanos;
+    public final int[] counts;
     @Getter
-    private final List<ChunkTypeTiming> typeTimings;
+    public final List<ChunkTypeTiming> typeTimings;
     @Getter
-    private final int entityCount;
+    public final int entityCount;
     @Getter
-    private final byte loadLevel;
+    public final byte loadLevel;
     @Getter
-    private final int ticketSourceCode;
+    public final int ticketSourceCode;
     @Getter
-    private final String ticketSource;
+    public final String ticketSource;
 
     public ChunkSnapshot(int dimensionId, int chunkX, int chunkZ, long[] nanos, int[] counts) {
         this(dimensionId, chunkX, chunkZ, nanos, counts, 0, (byte) 0, 0, "", Collections.emptyList());

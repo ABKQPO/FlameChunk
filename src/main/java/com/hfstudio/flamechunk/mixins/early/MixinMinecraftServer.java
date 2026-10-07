@@ -16,17 +16,17 @@ import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 public abstract class MixinMinecraftServer {
 
     @Inject(method = "tick", at = @At("HEAD"))
-    public void flamechunk$beginWorkTick(CallbackInfo callback) {
+    private void flamechunk$beginWorkTick(CallbackInfo callback) {
         PerformanceSampler.beginServerWorkTick();
     }
 
     @Inject(method = "tick", at = @At("RETURN"))
-    public void flamechunk$endWorkTick(CallbackInfo callback) {
+    private void flamechunk$endWorkTick(CallbackInfo callback) {
         PerformanceSampler.endServerWorkTick();
     }
 
     @Inject(method = "addServerInfoToCrashReport", at = @At("RETURN"))
-    public void flamechunk$appendTicketDiagnostics(CrashReport report, CallbackInfoReturnable<CrashReport> callback) {
+    private void flamechunk$appendTicketDiagnostics(CrashReport report, CallbackInfoReturnable<CrashReport> callback) {
         CrashReportDiagnostics.append(callback.getReturnValue(), (MinecraftServer) (Object) this);
     }
 }

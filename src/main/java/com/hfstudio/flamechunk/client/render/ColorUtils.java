@@ -31,6 +31,7 @@ public class ColorUtils {
     public static final int RGB_MASK = 0xFFFFFF;
     public static final int ALPHA_MASK = 0xFF000000;
     public static final float HOTSPOT_OPACITY = 0.9F;
+    public static final float FLAME_OPACITY = 0.7F;
     public static final float BEAM_OPACITY = 0.65F;
     public static final float TICKET_MINIMUM_OPACITY = 0.8F;
     public static final float TICKET_STROKE_OPACITY = 0.9F;

@@ -10,12 +10,12 @@ import lombok.Getter;
 public class SnapshotPacket implements IMessage {
 
     @Getter
-    private int originalSize;
-    private byte[] compressedBytes;
+    public int originalSize;
+    public byte[] compressedBytes;
     @Getter
-    private boolean finalSnapshot = true;
+    public boolean finalSnapshot = true;
     @Getter
-    private boolean valid = true;
+    public boolean valid = true;
 
     public SnapshotPacket() {}
 

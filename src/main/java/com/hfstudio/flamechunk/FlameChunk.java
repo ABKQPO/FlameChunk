@@ -50,11 +50,11 @@ public class FlameChunk {
     public static SimpleNetworkWrapper network;
     public static PerformanceSampler sampler;
     public static ServerUtilitiesBridge serverUtilities;
-    private EntityLoadGuard entityLoadGuard;
-    private WeakChunkInspector weakChunkInspector;
+    public EntityLoadGuard entityLoadGuard;
+    public WeakChunkInspector weakChunkInspector;
     @Getter
-    private WeakChunkClearService weakChunkClearService;
-    private LoaderTicketControlService loaderTicketControlService;
+    public WeakChunkClearService weakChunkClearService;
+    public LoaderTicketControlService loaderTicketControlService;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {

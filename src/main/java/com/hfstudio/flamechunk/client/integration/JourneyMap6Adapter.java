@@ -30,9 +30,9 @@ import journeymap.api.v2.common.util.BlockPos;
 @Optional.Interface(iface = "journeymap.api.v2.client.IClientPlugin", modid = "journeymap_api", striprefs = true)
 public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
 
-    private static final String GROUP_NAME = "flamechunk.heatmap";
-    private static volatile JourneyMap6Adapter activeInstance;
-    private IClientAPI api;
+    public static final String GROUP_NAME = "flamechunk.heatmap";
+    public static volatile JourneyMap6Adapter activeInstance;
+    public IClientAPI api;
 
     @Override
     @Optional.Method(modid = "journeymap_api")
@@ -134,7 +134,7 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     }
 
     @Optional.Method(modid = "journeymap_api")
-    private PolygonOverlay createOverlay(MapOverlayCell cell) {
+    public PolygonOverlay createOverlay(MapOverlayCell cell) {
         int minX = cell.getChunkX() << 4;
         int minZ = cell.getChunkZ() << 4;
         int maxX = minX + 16;

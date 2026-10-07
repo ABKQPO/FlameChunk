@@ -23,6 +23,7 @@ public enum Mods implements IMod, ITargetMod {
     JourneyMap("journeymap"),
     JourneyMap5("journeymap", Mods::isJourneyMap5),
     JourneyMap6("journeymap", Mods::isJourneyMap6),
+    JourneyMapApi("journeymap_api"),
     XaeroWorldMap("XaeroWorldMap"),
     XaeroMinimap("XaeroMinimap"),
     ServerUtilities("serverutilities"),
@@ -31,9 +32,9 @@ public enum Mods implements IMod, ITargetMod {
 
     public final String modid;
     public final String resourceDomain;
-    private final Supplier<Boolean> supplier;
-    private final TargetModBuilder targetBuilder;
-    private Boolean loaded;
+    public final Supplier<Boolean> supplier;
+    public final TargetModBuilder targetBuilder;
+    public Boolean loaded;
 
     Mods(String modid) {
         this(modid, null, null);
@@ -74,7 +75,9 @@ public enum Mods implements IMod, ITargetMod {
     }
 
     public static boolean hasMapIntegration() {
-        return JourneyMap.isModLoaded() || XaeroWorldMap.isModLoaded() || XaeroMinimap.isModLoaded();
+        return JourneyMap5.isModLoaded() || JourneyMap6.isModLoaded() && JourneyMapApi.isModLoaded()
+            || XaeroWorldMap.isModLoaded()
+            || XaeroMinimap.isModLoaded();
     }
 
     public static boolean hasRemoteFlameChunk(NetworkManager manager) {
@@ -91,15 +94,15 @@ public enum Mods implements IMod, ITargetMod {
         return resourceDomain;
     }
 
-    private static boolean isJourneyMap5() {
+    public static boolean isJourneyMap5() {
         return hasJourneyMapVersion("5.");
     }
 
-    private static boolean isJourneyMap6() {
+    public static boolean isJourneyMap6() {
         return hasJourneyMapVersion("6.");
     }
 
-    private static boolean hasJourneyMapVersion(String prefix) {
+    public static boolean hasJourneyMapVersion(String prefix) {
         if (!JourneyMap.isModLoaded()) {
             return false;
         }

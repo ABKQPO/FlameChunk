@@ -17,8 +17,8 @@ import lombok.Getter;
 @Getter
 public class WeakChunkSnapshotPacket implements IMessage {
 
-    private WeakChunkSnapshot snapshot;
-    private boolean valid = true;
+    public WeakChunkSnapshot snapshot;
+    public boolean valid = true;
 
     public WeakChunkSnapshotPacket() {}
 

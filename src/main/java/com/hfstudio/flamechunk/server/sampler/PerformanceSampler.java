@@ -44,35 +44,37 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 public class PerformanceSampler {
 
-    private static final int MAX_PENDING_REQUESTS = 64;
-    private static final int MAX_TYPE_AGGREGATES_PER_SCAN = 8192;
-    private static final List<GarbageCollectorMXBean> GC_BEANS = ManagementFactory.getGarbageCollectorMXBeans();
-    private static PerformanceSampler activeSampler;
+    public static final int MAX_PENDING_REQUESTS = 64;
+    public static final int MAX_TYPE_AGGREGATES_PER_SCAN = 8192;
+    public static final List<GarbageCollectorMXBean> GC_BEANS = ManagementFactory.getGarbageCollectorMXBeans();
+    public static PerformanceSampler activeSampler;
 
-    private final Int2ObjectOpenHashMap<DimensionTimings> dimensions = new Int2ObjectOpenHashMap<>();
-    private final SnapshotBuilder snapshotBuilder = new SnapshotBuilder();
+    public final Int2ObjectOpenHashMap<DimensionTimings> dimensions = new Int2ObjectOpenHashMap<>();
+    public final SnapshotBuilder snapshotBuilder = new SnapshotBuilder();
     public final ObjectHotspotStore objectHotspots = new ObjectHotspotStore();
     public final SnapshotPublisher snapshotPublisher = new SnapshotPublisher();
     public final SnapshotSubscriptions subscriptions;
-    private final ServerUtilitiesBridge serverUtilities;
-    private final ConcurrentLinkedQueue<PendingRequest> pendingRequests = new ConcurrentLinkedQueue<>();
-    private final AtomicInteger pendingRequestCount = new AtomicInteger();
-    private ICommandSender feedback;
-    private int durationSeconds;
-    private long totalTicks;
-    private long sampledTicks;
-    private long lastGcCollectionMillis;
-    private boolean active;
-    private int droppedDimensions;
-    private int droppedChunks;
-    private int typeAggregateCount;
-    private ScanSnapshot lastSnapshot;
+    public final ServerUtilitiesBridge serverUtilities;
+    public final ConcurrentLinkedQueue<PendingRequest> pendingRequests = new ConcurrentLinkedQueue<>();
+    public final AtomicInteger pendingRequestCount = new AtomicInteger();
+    public ICommandSender feedback;
+    public int durationSeconds;
+    public long totalTicks;
+    public long sampledTicks;
+    public long lastGcCollectionMillis;
+    public boolean active;
+    public int droppedDimensions;
+    public int droppedChunks;
+    public int typeAggregateCount;
+    public ScanSnapshot lastSnapshot;
     public long serverTicks;
     public volatile PrimaryObservationSampler primarySampler;
     public static volatile boolean serverTickInProgress;
+    public static final ThreadLocal<LongArrayList> NEIGHBOR_STARTS = ThreadLocal.withInitial(LongArrayList::new);
     public static final ClassValue<String> TYPE_NAMES = new ClassValue<>() {
 
         @Override
@@ -94,6 +96,12 @@ public class PerformanceSampler {
                 category,
                 world == null ? WorkContextTracker.NO_DIMENSION : world.provider.dimensionId,
                 typeName);
+    }
+
+    public static boolean isServerWorkThread() {
+        PerformanceSampler sampler = activeSampler;
+        PrimaryObservationSampler primary = sampler == null ? null : sampler.primarySampler;
+        return primary != null && Thread.currentThread() == primary.tracker.owner;
     }
 
     public static void leaveWork(int token) {
@@ -159,7 +167,7 @@ public class PerformanceSampler {
     }
 
     public static void recordEntityTiming(World world, Entity entity, long elapsedNanos) {
-        if (!isActive() || world == null || world.isRemote || entity == null) {
+        if (!isActive() || !isServerWorkThread() || world == null || world.isRemote || entity == null) {
             return;
         }
         String typeName = EntityList.getEntityString(entity);
@@ -200,7 +208,7 @@ public class PerformanceSampler {
 
     public static void recordBlockTiming(TickCategory category, World world, int x, int y, int z, String typeName,
         long elapsedNanos) {
-        if (!isActive() || world == null || world.isRemote) {
+        if (!isActive() || !isServerWorkThread() || world == null || world.isRemote) {
             return;
         }
         activeSampler.recordTiming(category, world, x >> 4, z >> 4, elapsedNanos, typeName);
@@ -277,7 +285,7 @@ public class PerformanceSampler {
     }
 
     public static long beginTiming() {
-        return isActive() ? System.nanoTime() : 0L;
+        return isActive() && isServerWorkThread() ? System.nanoTime() : 0L;
     }
 
     @SubscribeEvent
@@ -331,11 +339,11 @@ public class PerformanceSampler {
         resetTimings();
     }
 
-    private boolean startScan(EntityPlayerMP player, int seconds) {
+    public boolean startScan(EntityPlayerMP player, int seconds) {
         return startScan(player, player, seconds);
     }
 
-    private boolean startScan(EntityPlayerMP player, ICommandSender sender, int seconds) {
+    public boolean startScan(EntityPlayerMP player, ICommandSender sender, int seconds) {
         if (active || !ScanLimits.isValidDuration(seconds)) {
             return false;
         }
@@ -377,7 +385,7 @@ public class PerformanceSampler {
         return true;
     }
 
-    private void finishScan() {
+    public void finishScan() {
         captureGarbageCollection();
         if (primarySampler != null) {
             primarySampler.close();
@@ -420,14 +428,14 @@ public class PerformanceSampler {
         }
     }
 
-    private void sendProgress() {
+    public void sendProgress() {
         ScanProgressPacket packet = new ScanProgressPacket(sampledTicks, totalTicks);
         for (Subscription subscriber : subscriptions.current()) {
             FlameChunk.network.sendTo(packet, subscriber.player());
         }
     }
 
-    private void sendLiveSnapshot() {
+    public void sendLiveSnapshot() {
         List<Subscription> currentSubscriptions = subscriptions.current();
         if (currentSubscriptions.isEmpty()) {
             return;
@@ -446,13 +454,13 @@ public class PerformanceSampler {
         }
     }
 
-    private void resetTimings() {
+    public void resetTimings() {
         dimensions.clear();
         objectHotspots.clear();
         typeAggregateCount = 0;
     }
 
-    private void processPendingRequests() {
+    public void processPendingRequests() {
         int processed = 0;
         PendingRequest request;
         while (processed++ < 8 && (request = pendingRequests.poll()) != null) {
@@ -476,7 +484,7 @@ public class PerformanceSampler {
         }
     }
 
-    private void writeReport(ICommandSender sender, ScanSnapshot snapshot) {
+    public void writeReport(ICommandSender sender, ScanSnapshot snapshot) {
         ObservationSnapshot observations = snapshot.observations;
         ServerMessages.send(
             sender,
@@ -598,7 +606,7 @@ public class PerformanceSampler {
         }
     }
 
-    private boolean enqueuePendingRequest(EntityPlayerMP player, int seconds) {
+    public boolean enqueuePendingRequest(EntityPlayerMP player, int seconds) {
         while (true) {
             int current = pendingRequestCount.get();
             if (current >= MAX_PENDING_REQUESTS || !pendingRequestCount.compareAndSet(current, current + 1)) {
@@ -612,13 +620,13 @@ public class PerformanceSampler {
         }
     }
 
-    private void sendStatus(EntityPlayerMP player, int status) {
+    public void sendStatus(EntityPlayerMP player, int status) {
         if (PeerChannels.canSend(player)) {
             FlameChunk.network.sendTo(ScanProgressPacket.forStatus(status), player);
         }
     }
 
-    private void sendStatusToSubscribers(int status) {
+    public void sendStatusToSubscribers(int status) {
         ScanProgressPacket packet = ScanProgressPacket.forStatus(status);
         for (Subscription subscriber : subscriptions.current()) {
             FlameChunk.network.sendTo(packet, subscriber.player());
@@ -643,9 +651,9 @@ public class PerformanceSampler {
         return true;
     }
 
-    private void recordTiming(TickCategory category, World world, int chunkX, int chunkZ, long elapsedNanos,
+    public void recordTiming(TickCategory category, World world, int chunkX, int chunkZ, long elapsedNanos,
         String typeName) {
-        if (!active || world == null || world.isRemote || elapsedNanos < 0L) {
+        if (!active || !isServerWorkThread() || world == null || world.isRemote || elapsedNanos < 0L) {
             return;
         }
         DimensionTimings dimension = getDimension(world);
@@ -672,8 +680,8 @@ public class PerformanceSampler {
         }
     }
 
-    private void recordGlobalTiming(TickCategory category, World world, long elapsedNanos) {
-        if (!active || world == null || world.isRemote || elapsedNanos < 0L) {
+    public void recordGlobalTiming(TickCategory category, World world, long elapsedNanos) {
+        if (!active || !isServerWorkThread() || world == null || world.isRemote || elapsedNanos < 0L) {
             return;
         }
         DimensionTimings dimension = getDimension(world);
@@ -683,7 +691,7 @@ public class PerformanceSampler {
     }
 
     public void accumulateGlobalObjectTiming(TickCategory category, World world, String typeName, long elapsedNanos) {
-        if (!active || world == null || world.isRemote || elapsedNanos < 0L) {
+        if (!active || !isServerWorkThread() || world == null || world.isRemote || elapsedNanos < 0L) {
             return;
         }
         DimensionTimings dimension = getDimension(world);
@@ -693,7 +701,7 @@ public class PerformanceSampler {
         }
     }
 
-    private void captureGarbageCollection() {
+    public void captureGarbageCollection() {
         long currentMillis;
         try {
             currentMillis = gcCollectionMillis();
@@ -720,7 +728,7 @@ public class PerformanceSampler {
         }
     }
 
-    private long gcCollectionMillis() {
+    public long gcCollectionMillis() {
         long totalMillis = 0L;
         for (GarbageCollectorMXBean bean : GC_BEANS) {
             long collectionMillis = bean.getCollectionTime();
@@ -732,7 +740,7 @@ public class PerformanceSampler {
         return totalMillis;
     }
 
-    private DimensionTimings getDimension(World world) {
+    public DimensionTimings getDimension(World world) {
         int dimensionId = world.provider.dimensionId;
         DimensionTimings dimension = dimensions.get(dimensionId);
         if (dimension == null) {

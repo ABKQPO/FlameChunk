@@ -106,7 +106,7 @@ public class XaeroOverlayRenderer {
         }
     }
 
-    private static MapOverlayCell drawWeakOffscreenMarkers(MapOverlayModel model, int dimensionId, double cameraX,
+    public static MapOverlayCell drawWeakOffscreenMarkers(MapOverlayModel model, int dimensionId, double cameraX,
         double cameraZ, double scale, int width, int height, int mouseX, int mouseY) {
         MapOverlayCell hovered = null;
         for (MapOverlayCell cell : model.getCells()) {
@@ -215,11 +215,11 @@ public class XaeroOverlayRenderer {
         }
     }
 
-    private static double interpolate(double previous, double current, float partialTicks) {
+    public static double interpolate(double previous, double current, float partialTicks) {
         return previous + (current - previous) * partialTicks;
     }
 
-    private static void addTicketOutline(Tessellator tessellator, MapOverlayCell cell, double minX, double maxX,
+    public static void addTicketOutline(Tessellator tessellator, MapOverlayCell cell, double minX, double maxX,
         double minZ, double maxZ) {
         double width = maxX - minX;
         double height = maxZ - minZ;
@@ -236,14 +236,14 @@ public class XaeroOverlayRenderer {
         addQuad(tessellator, maxX - thickness, minZ + thickness, maxX, maxZ - thickness);
     }
 
-    private static void addQuad(Tessellator tessellator, double minX, double minZ, double maxX, double maxZ) {
+    public static void addQuad(Tessellator tessellator, double minX, double minZ, double maxX, double maxZ) {
         tessellator.addVertex(minX, minZ, 0.0D);
         tessellator.addVertex(maxX, minZ, 0.0D);
         tessellator.addVertex(maxX, maxZ, 0.0D);
         tessellator.addVertex(minX, maxZ, 0.0D);
     }
 
-    private static float interpolateAngle(float previous, float current, float partialTicks) {
+    public static float interpolateAngle(float previous, float current, float partialTicks) {
         float delta = current - previous;
         while (delta < -180.0F) {
             delta += 360.0F;
@@ -254,15 +254,15 @@ public class XaeroOverlayRenderer {
         return previous + delta * partialTicks;
     }
 
-    private static double toScreenX(double block, double camera, double scale, int width) {
+    public static double toScreenX(double block, double camera, double scale, int width) {
         return (block - camera) * scale + width * 0.5D;
     }
 
-    private static double toScreenZ(double block, double camera, double scale, int height) {
+    public static double toScreenZ(double block, double camera, double scale, int height) {
         return (block - camera) * scale + height * 0.5D;
     }
 
-    private static int floorChunk(double block) {
+    public static int floorChunk(double block) {
         return (int) Math.floor(block / 16.0D);
     }
 }

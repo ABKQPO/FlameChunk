@@ -5,10 +5,10 @@ import lombok.Getter;
 public class ScanSnapshot {
 
     @Getter
-    private final int durationSeconds;
+    public final int durationSeconds;
     @Getter
-    private final long sampledTicks;
-    private final DimensionSnapshot[] dimensions;
+    public final long sampledTicks;
+    public final DimensionSnapshot[] dimensions;
     public final ObservationSnapshot observations;
 
     public ScanSnapshot(int durationSeconds, long sampledTicks, DimensionSnapshot[] dimensions) {

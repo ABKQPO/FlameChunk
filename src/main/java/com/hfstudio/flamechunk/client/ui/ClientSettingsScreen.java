@@ -1,8 +1,6 @@
 package com.hfstudio.flamechunk.client.ui;
 
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -16,13 +14,15 @@ import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+
 public class ClientSettingsScreen extends GuiScreen {
 
-    private final GuiScreen parent;
-    private final Map<Integer, Integer> originalButtonY = new HashMap<>();
-    private int[] categoryButtonIds;
-    private int scrollOffset;
-    private int maximumScrollOffset;
+    public final GuiScreen parent;
+    public final Int2IntOpenHashMap originalButtonY = new Int2IntOpenHashMap();
+    public int[] categoryButtonIds;
+    public int scrollOffset;
+    public int maximumScrollOffset;
 
     public ClientSettingsScreen(GuiScreen parent) {
         this.parent = parent;
@@ -80,7 +80,7 @@ public class ClientSettingsScreen extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button) {
+    public void actionPerformed(GuiButton button) {
         switch (button.id) {
             case 0:
                 ClientConfig.scanSeconds = bounded(
@@ -211,7 +211,7 @@ public class ClientSettingsScreen extends GuiScreen {
         super.keyTyped(typedChar, keyCode);
     }
 
-    private void toggleCategory(int id) {
+    public void toggleCategory(int id) {
         int index = id - 20;
         if (index < 0 || index >= TickCategory.COUNT) {
             return;
@@ -220,7 +220,7 @@ public class ClientSettingsScreen extends GuiScreen {
         ClientConfig.tooltipCategories.toggle(category);
     }
 
-    private void updateButtonLabels() {
+    public void updateButtonLabels() {
         label(0, translated("flamechunk.settings.scanDecrease", ClientConfig.scanSeconds));
         label(1, translated("flamechunk.settings.scanIncrease", ClientConfig.scanSeconds));
         label(
@@ -278,12 +278,12 @@ public class ClientSettingsScreen extends GuiScreen {
         }
     }
 
-    private void updateButtonPositions() {
+    public void updateButtonPositions() {
         for (GuiButton button : buttonList) {
-            Integer originalY = originalButtonY.get(button.id);
-            if (originalY == null) {
+            if (!originalButtonY.containsKey(button.id)) {
                 continue;
             }
+            int originalY = originalButtonY.get(button.id);
             if (button.id == 40 || button.id == 41) {
                 button.yPosition = originalY;
                 button.visible = true;
@@ -294,12 +294,12 @@ public class ClientSettingsScreen extends GuiScreen {
         }
     }
 
-    private ReportOutputMode nextReportOutputMode(ReportOutputMode current) {
+    public ReportOutputMode nextReportOutputMode(ReportOutputMode current) {
         ReportOutputMode[] modes = ReportOutputMode.values();
         return modes[(current.ordinal() + 1) % modes.length];
     }
 
-    private void label(int id, String value) {
+    public void label(int id, String value) {
         for (GuiButton button : buttonList) {
             if (button.id == id) {
                 button.displayString = value;
@@ -312,15 +312,15 @@ public class ClientSettingsScreen extends GuiScreen {
         return StatCollector.translateToLocalFormatted(key, (Object[]) values);
     }
 
-    private String translated(String key, int value) {
+    public String translated(String key, int value) {
         return StatCollector.translateToLocalFormatted(key, value);
     }
 
-    private String enabled(boolean value) {
+    public String enabled(boolean value) {
         return StatCollector.translateToLocal(value ? "flamechunk.settings.enabled" : "flamechunk.settings.disabled");
     }
 
-    private int bounded(int value, int minimum, int maximum) {
+    public int bounded(int value, int minimum, int maximum) {
         return Math.max(minimum, Math.min(maximum, value));
     }
 

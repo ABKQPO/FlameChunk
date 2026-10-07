@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 public class ClearSnapshotPacket implements IMessage {
 
-    private boolean valid = true;
+    public boolean valid = true;
 
     public ClearSnapshotPacket() {}
 

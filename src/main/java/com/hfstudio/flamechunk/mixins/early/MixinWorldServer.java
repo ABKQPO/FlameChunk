@@ -22,7 +22,7 @@ public abstract class MixinWorldServer {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;updateTick(Lnet/minecraft/world/World;IIILjava/util/Random;)V"))
-    public void flamechunk$measureRandomTick(Block block, World world, int x, int y, int z, Random random) {
+    private void flamechunk$measureRandomTick(Block block, World world, int x, int y, int z, Random random) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
             : PerformanceSampler
@@ -50,7 +50,7 @@ public abstract class MixinWorldServer {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;updateTick(Lnet/minecraft/world/World;IIILjava/util/Random;)V"))
-    public void flamechunk$measureScheduledTick(Block block, World world, int x, int y, int z, Random random) {
+    private void flamechunk$measureScheduledTick(Block block, World world, int x, int y, int z, Random random) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
             : PerformanceSampler

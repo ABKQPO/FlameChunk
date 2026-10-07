@@ -27,8 +27,8 @@ public abstract class MixinEventBus {
         at = @At(
             value = "INVOKE",
             target = "Lcpw/mods/fml/common/eventhandler/IEventListener;invoke(Lcpw/mods/fml/common/eventhandler/Event;)V"))
-    public void flamechunk$measureEventHandler(IEventListener listener, Event event) {
-        if (!PerformanceSampler.isActive()) {
+    private void flamechunk$measureEventHandler(IEventListener listener, Event event) {
+        if (!PerformanceSampler.isActive() || !PerformanceSampler.isServerWorkThread()) {
             listener.invoke(event);
             return;
         }

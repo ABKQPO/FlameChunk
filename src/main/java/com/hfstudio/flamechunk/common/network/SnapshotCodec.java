@@ -22,7 +22,7 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 10;
+    public static final int CODEC_VERSION = 10;
     public static final TickCategory[] CATEGORIES = TickCategory.values();
 
     public byte[] encode(ScanSnapshot snapshot) {
@@ -203,7 +203,7 @@ public class SnapshotCodec {
         return new ObservationSnapshot(nanos, peak, ticks, attempts, consistent, discarded, interval, reason, entries);
     }
 
-    private static void writeLongs(DataOutputStream output, long[] values) throws IOException {
+    public static void writeLongs(DataOutputStream output, long[] values) throws IOException {
         if (values.length != TickCategory.COUNT) {
             throw new IllegalArgumentException("Unexpected timing category count");
         }
@@ -215,7 +215,7 @@ public class SnapshotCodec {
         }
     }
 
-    private static void writeTypeTimings(DataOutputStream output, List<ChunkTypeTiming> timings) throws IOException {
+    public static void writeTypeTimings(DataOutputStream output, List<ChunkTypeTiming> timings) throws IOException {
         checkCount(timings.size(), 16, "type timing");
         output.writeByte(timings.size());
         for (ChunkTypeTiming timing : timings) {
@@ -229,7 +229,7 @@ public class SnapshotCodec {
         }
     }
 
-    private static List<ChunkTypeTiming> readTypeTimings(DataInputStream input) throws IOException {
+    public static List<ChunkTypeTiming> readTypeTimings(DataInputStream input) throws IOException {
         int count = input.readUnsignedByte();
         if (count > 16) {
             throw new IllegalArgumentException("Type timing count exceeds the limit");
@@ -294,7 +294,7 @@ public class SnapshotCodec {
         return hotspots;
     }
 
-    private static void writeInts(DataOutputStream output, int[] values) throws IOException {
+    public static void writeInts(DataOutputStream output, int[] values) throws IOException {
         if (values.length != TickCategory.COUNT) {
             throw new IllegalArgumentException("Unexpected timing category count");
         }
@@ -306,7 +306,7 @@ public class SnapshotCodec {
         }
     }
 
-    private static long[] readLongs(DataInputStream input) throws IOException {
+    public static long[] readLongs(DataInputStream input) throws IOException {
         long[] values = new long[TickCategory.COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readLong();
@@ -317,7 +317,7 @@ public class SnapshotCodec {
         return values;
     }
 
-    private static int[] readInts(DataInputStream input) throws IOException {
+    public static int[] readInts(DataInputStream input) throws IOException {
         int[] values = new int[TickCategory.COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readInt();
@@ -328,19 +328,19 @@ public class SnapshotCodec {
         return values;
     }
 
-    private static int readCount(DataInputStream input, int maximum, String label) throws IOException {
+    public static int readCount(DataInputStream input, int maximum, String label) throws IOException {
         int count = input.readInt();
         checkCount(count, maximum, label);
         return count;
     }
 
-    private static void checkCount(int count, int maximum, String label) {
+    public static void checkCount(int count, int maximum, String label) {
         if (count < 0 || count > maximum) {
             throw new IllegalArgumentException("Invalid " + label + " count: " + count);
         }
     }
 
-    private static void validateScanWindow(int duration, long ticks) {
+    public static void validateScanWindow(int duration, long ticks) {
         if (!ScanLimits.isValidDuration(duration) || ticks < 0L || ticks > duration * 20L) {
             throw new IllegalArgumentException("Invalid scan window");
         }

@@ -18,9 +18,8 @@ import com.hfstudio.flamechunk.server.command.ServerMessages;
 
 public class LoaderTicketReport {
 
-    private static final int MAX_TICKET_ROWS_PER_DIMENSION = 32;
-    private static final Comparator<TicketEntry> TICKET_ORDER = Comparator
-        .comparing((TicketEntry entry) -> entry.source)
+    public static final int MAX_TICKET_ROWS_PER_DIMENSION = 32;
+    public static final Comparator<TicketEntry> TICKET_ORDER = Comparator.comparing((TicketEntry entry) -> entry.source)
         .thenComparingInt(entry -> entry.chunkX)
         .thenComparingInt(entry -> entry.chunkZ)
         .thenComparingLong(entry -> entry.sequence);

@@ -11,12 +11,12 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 public class ClientSnapshotStorage {
 
-    private ScanSnapshot snapshot;
-    private final Int2ObjectOpenHashMap<WeakChunkSnapshot> weakSnapshots = new Int2ObjectOpenHashMap<>();
-    private long elapsedTicks;
-    private long totalTicks;
-    private boolean scanning;
-    private int status = -1;
+    public ScanSnapshot snapshot;
+    public final Int2ObjectOpenHashMap<WeakChunkSnapshot> weakSnapshots = new Int2ObjectOpenHashMap<>();
+    public long elapsedTicks;
+    public long totalTicks;
+    public boolean scanning;
+    public int status = -1;
 
     public synchronized void clear() {
         snapshot = null;

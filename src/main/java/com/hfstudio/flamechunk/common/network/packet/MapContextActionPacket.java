@@ -15,12 +15,12 @@ public class MapContextActionPacket implements IMessage {
     public static final int WEAK_ENTITY_CLEAR = 1;
     public static final int LOADER_TOGGLE = 2;
 
-    private int action;
-    private int dimensionId;
-    private int chunkX;
-    private int chunkZ;
-    private String entityType;
-    private boolean valid;
+    public int action;
+    public int dimensionId;
+    public int chunkX;
+    public int chunkZ;
+    public String entityType;
+    public boolean valid;
 
     public MapContextActionPacket() {}
 
@@ -81,7 +81,7 @@ public class MapContextActionPacket implements IMessage {
         buffer.writeBytes(encodedType);
     }
 
-    private static boolean isValidAction(int action, String entityType) {
+    public static boolean isValidAction(int action, String entityType) {
         if (entityType == null) {
             return false;
         }

@@ -31,15 +31,15 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class DiagnosticScreen extends GuiScreen {
 
-    private final ClientSnapshotStorage storage;
-    private final ColorCalculator colors = new ColorCalculator();
-    private boolean showWeakChunks;
-    private int pageIndex;
-    private int sortCategoryIndex = TickCategory.COUNT;
-    private ScanSnapshot orderedSnapshot;
-    private DimensionSnapshot orderedDimension;
-    private List<ChunkSnapshot> orderedChunks = Collections.emptyList();
-    private ChunkSnapshot expandedChunk;
+    public final ClientSnapshotStorage storage;
+    public final ColorCalculator colors = new ColorCalculator();
+    public boolean showWeakChunks;
+    public int pageIndex;
+    public int sortCategoryIndex = TickCategory.COUNT;
+    public ScanSnapshot orderedSnapshot;
+    public DimensionSnapshot orderedDimension;
+    public List<ChunkSnapshot> orderedChunks = Collections.emptyList();
+    public ChunkSnapshot expandedChunk;
 
     public DiagnosticScreen(ClientSnapshotStorage storage) {
         this.storage = storage;
@@ -155,7 +155,7 @@ public class DiagnosticScreen extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button) {
+    public void actionPerformed(GuiButton button) {
         if (button.id == 0) {
             if (storage.isScanning()) {
                 MapOverlayControls.requestStop();
@@ -194,11 +194,11 @@ public class DiagnosticScreen extends GuiScreen {
         }
     }
 
-    private void requestScan() {
+    public void requestScan() {
         MapOverlayControls.requestScan();
     }
 
-    private void updateButtons() {
+    public void updateButtons() {
         if (buttonList.size() < 2) {
             return;
         }
@@ -224,7 +224,7 @@ public class DiagnosticScreen extends GuiScreen {
         }
     }
 
-    private void drawDimension(ScanSnapshot snapshot) {
+    public void drawDimension(ScanSnapshot snapshot) {
         int dimensionId = currentDimensionId();
         DimensionSnapshot dimension = findDimension(snapshot, dimensionId);
         if (dimension == null) {
@@ -301,7 +301,7 @@ public class DiagnosticScreen extends GuiScreen {
         }
     }
 
-    private DimensionSnapshot findDimension(ScanSnapshot snapshot, int dimensionId) {
+    public DimensionSnapshot findDimension(ScanSnapshot snapshot, int dimensionId) {
         for (DimensionSnapshot dimension : snapshot.getDimensions()) {
             if (dimension.getDimensionId() == dimensionId) {
                 return dimension;
@@ -310,11 +310,11 @@ public class DiagnosticScreen extends GuiScreen {
         return null;
     }
 
-    private float calculateMspt(ChunkSnapshot chunk, long sampledTicks) {
+    public float calculateMspt(ChunkSnapshot chunk, long sampledTicks) {
         return chunk.calculateMspt(Math.max(1L, sampledTicks));
     }
 
-    private List<ChunkSnapshot> orderedChunks(ScanSnapshot snapshot, DimensionSnapshot dimension) {
+    public List<ChunkSnapshot> orderedChunks(ScanSnapshot snapshot, DimensionSnapshot dimension) {
         if (snapshot != orderedSnapshot || dimension != orderedDimension) {
             orderedSnapshot = snapshot;
             orderedDimension = dimension;
@@ -326,7 +326,7 @@ public class DiagnosticScreen extends GuiScreen {
         return orderedChunks;
     }
 
-    private void drawChunkDetails(ScanSnapshot snapshot, ChunkSnapshot chunk) {
+    public void drawChunkDetails(ScanSnapshot snapshot, ChunkSnapshot chunk) {
         List<String> lines = new ArrayList<>(26);
         String source = chunk.getTicketSource()
             .length() == 0 ? "none" : chunk.getTicketSource();
@@ -418,11 +418,11 @@ public class DiagnosticScreen extends GuiScreen {
         super.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
-    private String trim(String value, int maximumLength) {
+    public String trim(String value, int maximumLength) {
         return value.length() <= maximumLength ? value : value.substring(0, maximumLength - 3) + "...";
     }
 
-    private Comparator<ChunkSnapshot> chunkComparator() {
+    public Comparator<ChunkSnapshot> chunkComparator() {
         return (left, right) -> {
             long leftValue = sortCategoryIndex == TickCategory.COUNT ? left.totalNanos()
                 : left.getCategoryNanos(TickCategory.values()[sortCategoryIndex]);
@@ -437,11 +437,11 @@ public class DiagnosticScreen extends GuiScreen {
         };
     }
 
-    private int pageSize() {
+    public int pageSize() {
         return Math.max(1, (height - 184) / 12);
     }
 
-    private int chunkListStart(DimensionSnapshot dimension) {
+    public int chunkListStart(DimensionSnapshot dimension) {
         return 122 + Math.min(
             2,
             dimension.getGlobalTypeTimings()
@@ -449,18 +449,18 @@ public class DiagnosticScreen extends GuiScreen {
             * 12;
     }
 
-    private int pageCount(int chunks) {
+    public int pageCount(int chunks) {
         return (chunks + pageSize() - 1) / pageSize();
     }
 
-    private String sortCategoryLabel() {
+    public String sortCategoryLabel() {
         String label = sortCategoryIndex == TickCategory.COUNT ? "flamechunk.client.total"
             : "flamechunk.category." + TickCategory.values()[sortCategoryIndex].name()
                 .toLowerCase(Locale.ENGLISH);
         return StatCollector.translateToLocalFormatted("flamechunk.client.sort", StatCollector.translateToLocal(label));
     }
 
-    private long totalCategoryNanos(long[] values) {
+    public long totalCategoryNanos(long[] values) {
         long total = 0L;
         for (int index = 0; index < values.length; index++) {
             if (index != TickCategory.BLOCK_UPDATE.ordinal()) {
@@ -470,7 +470,7 @@ public class DiagnosticScreen extends GuiScreen {
         return total;
     }
 
-    private void drawWeakChunks(int dimensionId) {
+    public void drawWeakChunks(int dimensionId) {
         WeakChunkSnapshot snapshot = storage.getWeakSnapshot(dimensionId);
         if (snapshot == null || snapshot.getChunks()
             .isEmpty()) {
@@ -529,7 +529,7 @@ public class DiagnosticScreen extends GuiScreen {
         }
     }
 
-    private int currentDimensionId() {
+    public int currentDimensionId() {
         Minecraft minecraft = Minecraft.getMinecraft();
         return minecraft.theWorld == null ? 0 : minecraft.theWorld.provider.dimensionId;
     }
@@ -541,7 +541,7 @@ public class DiagnosticScreen extends GuiScreen {
         }
     }
 
-    private float colorBudget(ScanSnapshot snapshot) {
+    public float colorBudget(ScanSnapshot snapshot) {
         if (!ClientConfig.relativeHeatColor) {
             return ClientConfig.heatThresholdMspt;
         }

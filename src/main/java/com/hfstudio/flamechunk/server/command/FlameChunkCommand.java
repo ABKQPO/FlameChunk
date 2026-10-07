@@ -30,7 +30,7 @@ import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
 public class FlameChunkCommand extends CommandBase {
 
-    private final WeakChunkClearService weakChunkClearService;
+    public final WeakChunkClearService weakChunkClearService;
     public final WeakChunkInspector weakChunkInspector;
 
     public FlameChunkCommand(WeakChunkClearService weakChunkClearService) {
@@ -182,7 +182,7 @@ public class FlameChunkCommand extends CommandBase {
         throw new WrongUsageException(getCommandUsage(sender));
     }
 
-    private void processScan(ICommandSender sender, String[] args) throws CommandException {
+    public void processScan(ICommandSender sender, String[] args) throws CommandException {
         if (args.length > 2) {
             throw new WrongUsageException(getCommandUsage(sender));
         }
@@ -213,7 +213,7 @@ public class FlameChunkCommand extends CommandBase {
         }
     }
 
-    private void processWeakClear(ICommandSender sender, String[] args) throws CommandException {
+    public void processWeakClear(ICommandSender sender, String[] args) throws CommandException {
         if (args.length != 5 || !"confirm".equalsIgnoreCase(args[4])) {
             throw new WrongUsageException(getCommandUsage(sender));
         }
@@ -242,7 +242,7 @@ public class FlameChunkCommand extends CommandBase {
         }
     }
 
-    private int parseCoordinate(String value) throws NumberInvalidException {
+    public int parseCoordinate(String value) throws NumberInvalidException {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException exception) {
@@ -250,7 +250,7 @@ public class FlameChunkCommand extends CommandBase {
         }
     }
 
-    private void processLoaderControl(ICommandSender sender, String[] args) throws CommandException {
+    public void processLoaderControl(ICommandSender sender, String[] args) throws CommandException {
         if (args.length == 3 && "frozen".equalsIgnoreCase(args[1])) {
             if (!authorized(sender, "flamechunk.loadercontrol")) {
                 sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
@@ -319,7 +319,7 @@ public class FlameChunkCommand extends CommandBase {
         }
     }
 
-    private boolean authorized(ICommandSender sender, String permission) {
+    public boolean authorized(ICommandSender sender, String permission) {
         if (sender instanceof EntityPlayerMP player) {
             if (ServerConfig.requireOperator && !player.canCommandSenderUseCommand(2, getCommandName())) {
                 return false;

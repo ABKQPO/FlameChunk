@@ -37,17 +37,17 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 public class WeakChunkInspector {
 
-    private static final int MAX_TRACKED_CHUNKS = 8192;
-    private static final int MAX_TRACKED_TYPES_PER_CHUNK = 128;
-    private static final int MAX_REPORTED_CHUNKS = WeakChunkSnapshot.MAX_CHUNKS;
-    private static final int MAX_REPORTED_TYPES = WeakChunkSnapshot.MAX_ENTITY_TYPES;
-    private static final int MAX_PENDING_SNAPSHOT_REQUESTS = 64;
-    private static WeakChunkInspector activeInspector;
+    public static final int MAX_TRACKED_CHUNKS = 8192;
+    public static final int MAX_TRACKED_TYPES_PER_CHUNK = 128;
+    public static final int MAX_REPORTED_CHUNKS = WeakChunkSnapshot.MAX_CHUNKS;
+    public static final int MAX_REPORTED_TYPES = WeakChunkSnapshot.MAX_ENTITY_TYPES;
+    public static final int MAX_PENDING_SNAPSHOT_REQUESTS = 64;
+    public static WeakChunkInspector activeInspector;
 
-    private final ServerUtilitiesBridge serverUtilities;
-    private final Map<World, ScanState> states = new WeakHashMap<>();
-    private final ConcurrentLinkedQueue<SnapshotRequest> snapshotRequests = new ConcurrentLinkedQueue<>();
-    private final AtomicInteger snapshotRequestCount = new AtomicInteger();
+    public final ServerUtilitiesBridge serverUtilities;
+    public final Map<World, ScanState> states = new WeakHashMap<>();
+    public final ConcurrentLinkedQueue<SnapshotRequest> snapshotRequests = new ConcurrentLinkedQueue<>();
+    public final AtomicInteger snapshotRequestCount = new AtomicInteger();
 
     public WeakChunkInspector(ServerUtilitiesBridge serverUtilities) {
         this.serverUtilities = serverUtilities;
@@ -96,7 +96,7 @@ public class WeakChunkInspector {
         states.clear();
     }
 
-    private void publishDiagnostics(World world, WeakChunkSnapshot snapshot) {
+    public void publishDiagnostics(World world, WeakChunkSnapshot snapshot) {
         int loadedChunks = world.getChunkProvider()
             .getLoadedChunkCount();
         if (loadedChunks > ServerConfig.weakChunkMinimum && snapshot.getChunks()
@@ -122,7 +122,7 @@ public class WeakChunkInspector {
         }
     }
 
-    private boolean enqueueRequest(EntityPlayerMP player) {
+    public boolean enqueueRequest(EntityPlayerMP player) {
         if (player == null) {
             return false;
         }
@@ -139,7 +139,7 @@ public class WeakChunkInspector {
         }
     }
 
-    private void serveSnapshotRequests(World world, WeakChunkSnapshot snapshot) {
+    public void serveSnapshotRequests(World world, WeakChunkSnapshot snapshot) {
         int count = snapshotRequestCount.get();
         for (int index = 0; index < count; index++) {
             SnapshotRequest request = snapshotRequests.poll();
@@ -178,22 +178,22 @@ public class WeakChunkInspector {
         }
     }
 
-    private void requeue(SnapshotRequest request) {
+    public void requeue(SnapshotRequest request) {
         snapshotRequests.offer(request);
     }
 
     public static class SnapshotRequest {
 
-        private final EntityPlayerMP player;
-        private final int dimensionId;
+        public final EntityPlayerMP player;
+        public final int dimensionId;
 
-        private SnapshotRequest(EntityPlayerMP player, int dimensionId) {
+        public SnapshotRequest(EntityPlayerMP player, int dimensionId) {
             this.player = player;
             this.dimensionId = dimensionId;
         }
     }
 
-    private String formatTypes(List<EntityTypeCount> entityTypes) {
+    public String formatTypes(List<EntityTypeCount> entityTypes) {
         StringBuilder value = new StringBuilder();
         for (EntityTypeCount entityType : entityTypes) {
             if (value.length() > 0) {
@@ -206,15 +206,15 @@ public class WeakChunkInspector {
         return value.toString();
     }
 
-    private static long pack(int chunkX, int chunkZ) {
+    public static long pack(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL);
     }
 
-    private static int unpackX(long key) {
+    public static int unpackX(long key) {
         return (int) (key >> 32);
     }
 
-    private static int unpackZ(long key) {
+    public static int unpackZ(long key) {
         return (int) key;
     }
 
@@ -259,20 +259,20 @@ public class WeakChunkInspector {
 
     public static class ScanState {
 
-        private final Long2IntOpenHashMap entityCounts = new Long2IntOpenHashMap();
-        private final Long2ObjectOpenHashMap<Map<String, Integer>> typeCounts = new Long2ObjectOpenHashMap<>();
-        private boolean scanning;
-        private int cursor;
-        private int inspected;
-        private int ticksSinceScan;
-        private boolean truncated;
-        private WeakChunkSnapshot latestSnapshot;
+        public final Long2IntOpenHashMap entityCounts = new Long2IntOpenHashMap();
+        public final Long2ObjectOpenHashMap<Map<String, Integer>> typeCounts = new Long2ObjectOpenHashMap<>();
+        public boolean scanning;
+        public int cursor;
+        public int inspected;
+        public int ticksSinceScan;
+        public boolean truncated;
+        public WeakChunkSnapshot latestSnapshot;
 
-        private ScanState() {
+        public ScanState() {
             entityCounts.defaultReturnValue(0);
         }
 
-        private void begin() {
+        public void begin() {
             scanning = true;
             cursor = 0;
             inspected = 0;
@@ -282,7 +282,7 @@ public class WeakChunkInspector {
             typeCounts.clear();
         }
 
-        private boolean scan(World world, int entitiesPerTick, int maximumEntities) {
+        public boolean scan(World world, int entitiesPerTick, int maximumEntities) {
             List<Entity> entities = world.loadedEntityList;
             int limit = Math.min(entities.size(), Math.min(maximumEntities, cursor + entitiesPerTick));
             while (cursor < limit) {
@@ -320,7 +320,7 @@ public class WeakChunkInspector {
             return cursor >= entities.size();
         }
 
-        private WeakChunkSnapshot finish(int dimensionId, long generatedAtTick) {
+        public WeakChunkSnapshot finish(int dimensionId, long generatedAtTick) {
             List<Long2IntMap.Entry> candidates = new ArrayList<>();
             for (Long2IntMap.Entry entry : entityCounts.long2IntEntrySet()) {
                 if (entry.getIntValue()
@@ -348,7 +348,7 @@ public class WeakChunkInspector {
             return latestSnapshot;
         }
 
-        private List<EntityTypeCount> topTypes(Map<String, Integer> counts) {
+        public List<EntityTypeCount> topTypes(Map<String, Integer> counts) {
             if (counts == null || counts.isEmpty()) {
                 return Collections.emptyList();
             }

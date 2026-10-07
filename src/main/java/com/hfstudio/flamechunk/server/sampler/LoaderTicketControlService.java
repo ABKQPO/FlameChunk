@@ -25,8 +25,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 public class LoaderTicketControlService {
 
-    private static final Map<World, Long2ObjectMap<Set<ForgeChunkManager.Ticket>>> BLOCKED_TICKETS = new IdentityHashMap<>();
-    private static final Map<World, LoaderControlData> WORLD_DATA = new IdentityHashMap<>();
+    public static final Map<World, Long2ObjectMap<Set<ForgeChunkManager.Ticket>>> BLOCKED_TICKETS = new IdentityHashMap<>();
+    public static final Map<World, LoaderControlData> WORLD_DATA = new IdentityHashMap<>();
 
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
@@ -179,7 +179,7 @@ public class LoaderTicketControlService {
         return cleared;
     }
 
-    private static LoaderControlData getData(World world) {
+    public static LoaderControlData getData(World world) {
         if (WORLD_DATA.containsKey(world)) {
             LoaderControlData cached = WORLD_DATA.get(world);
             if (cached != null) {
@@ -196,7 +196,7 @@ public class LoaderTicketControlService {
         return data;
     }
 
-    private static LoaderControlData getDataIfPresent(World world) {
+    public static LoaderControlData getDataIfPresent(World world) {
         if (WORLD_DATA.containsKey(world)) {
             return WORLD_DATA.get(world);
         }
@@ -209,13 +209,13 @@ public class LoaderTicketControlService {
         return null;
     }
 
-    private static void rememberTickets(Iterable<ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair chunk) {
+    public static void rememberTickets(Iterable<ForgeChunkManager.Ticket> tickets, ChunkCoordIntPair chunk) {
         for (ForgeChunkManager.Ticket ticket : tickets) {
             rememberTicket(ticket, chunk);
         }
     }
 
-    private static void rememberTicket(ForgeChunkManager.Ticket ticket, ChunkCoordIntPair chunk) {
+    public static void rememberTicket(ForgeChunkManager.Ticket ticket, ChunkCoordIntPair chunk) {
         long key = ChunkCoordIntPair.chunkXZ2Int(chunk.chunkXPos, chunk.chunkZPos);
         Long2ObjectMap<Set<ForgeChunkManager.Ticket>> byChunk = BLOCKED_TICKETS.get(ticket.world);
         if (byChunk == null) {
@@ -230,7 +230,7 @@ public class LoaderTicketControlService {
         tickets.add(ticket);
     }
 
-    private static Set<ForgeChunkManager.Ticket> forgetTickets(World world, ChunkCoordIntPair chunk) {
+    public static Set<ForgeChunkManager.Ticket> forgetTickets(World world, ChunkCoordIntPair chunk) {
         Long2ObjectMap<Set<ForgeChunkManager.Ticket>> byChunk = BLOCKED_TICKETS.get(world);
         if (byChunk == null) {
             return Collections.emptySet();
@@ -243,7 +243,7 @@ public class LoaderTicketControlService {
         return tickets == null ? Collections.emptySet() : tickets;
     }
 
-    private static Multimap<String, ForgeChunkManager.Ticket> ticketsForWorld(World world) {
+    public static Multimap<String, ForgeChunkManager.Ticket> ticketsForWorld(World world) {
         Map<World, Multimap<String, ForgeChunkManager.Ticket>> tickets = ForgeChunkManagerAccessor
             .flamechunk$getTickets();
         Multimap<String, ForgeChunkManager.Ticket> worldTickets = tickets.get(world);

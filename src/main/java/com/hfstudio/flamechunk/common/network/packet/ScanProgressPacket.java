@@ -22,11 +22,11 @@ public class ScanProgressPacket implements IMessage {
     public static final int UNSUBSCRIBED = 10;
     public static final int SUBSCRIPTION_DENIED = 11;
 
-    private long elapsedTicks;
-    private long totalTicks;
-    private int status = -1;
-    private boolean statusMessage;
-    private boolean valid = true;
+    public long elapsedTicks;
+    public long totalTicks;
+    public int status = -1;
+    public boolean statusMessage;
+    public boolean valid = true;
 
     public ScanProgressPacket() {}
 

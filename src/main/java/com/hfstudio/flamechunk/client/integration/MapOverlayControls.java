@@ -30,8 +30,8 @@ import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
 
 public class MapOverlayControls {
 
-    private static int lastWeakSnapshotDimension = Integer.MIN_VALUE;
-    private static long lastWeakSnapshotRequestMillis;
+    public static int lastWeakSnapshotDimension = Integer.MIN_VALUE;
+    public static long lastWeakSnapshotRequestMillis;
     public static volatile NetworkManager connection;
     public static boolean subscribed;
     public static boolean subscriptionDenied;
@@ -59,7 +59,7 @@ public class MapOverlayControls {
             return;
         }
         boolean requested = ClientConfig.liveUpdates && !subscriptionDenied;
-        boolean worldHotspots = ClientConfig.worldOverlayEnabled && Mods.hasMapIntegration();
+        boolean worldHotspots = ClientConfig.worldOverlayEnabled && ClientMapIntegrations.hasMapIntegration();
         if (System.nanoTime() < nextSubscriptionAttemptNanos) {
             return;
         }
@@ -264,11 +264,11 @@ public class MapOverlayControls {
         return storage != null && storage.isScanning() ? storage.getProgress() : 0.0F;
     }
 
-    private static ClientSnapshotStorage clientStorage() {
+    public static ClientSnapshotStorage clientStorage() {
         return FlameChunk.proxy instanceof ClientProxy clientProxy ? clientProxy.getSnapshotStorage() : null;
     }
 
-    private static void sendMapContextAction(int action, int dimensionId, int chunkX, int chunkZ, String entityType) {
+    public static void sendMapContextAction(int action, int dimensionId, int chunkX, int chunkZ, String entityType) {
         Minecraft minecraft = Minecraft.getMinecraft();
         if (!isServerAvailable() || minecraft.theWorld == null
             || minecraft.theWorld.provider.dimensionId != dimensionId) {

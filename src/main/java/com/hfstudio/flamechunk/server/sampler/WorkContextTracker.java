@@ -20,6 +20,9 @@ public class WorkContextTracker {
     }
 
     public void beginTick(long id) {
+        if (Thread.currentThread() != owner || id <= 0) {
+            return;
+        }
         revision++;
         depth = 0;
         tickId = id;
@@ -27,6 +30,9 @@ public class WorkContextTracker {
     }
 
     public void endTick() {
+        if (Thread.currentThread() != owner) {
+            return;
+        }
         revision++;
         tickId = 0;
         depth = 0;
@@ -52,7 +58,7 @@ public class WorkContextTracker {
     }
 
     public void leave(int token) {
-        if (token == 0 || Thread.currentThread() != owner || tickId == 0) {
+        if (token <= 0 || token > depth || Thread.currentThread() != owner || tickId == 0) {
             return;
         }
         revision++;

@@ -15,10 +15,10 @@ public class WeakChunkSnapshot {
     public static final int ENTITY_RED_THRESHOLD = 350;
     public static final int ENTITY_PURPLE_THRESHOLD = 500;
 
-    private final int dimensionId;
-    private final long generatedAtTick;
-    private final boolean truncated;
-    private final List<ChunkEntry> chunks;
+    public final int dimensionId;
+    public final long generatedAtTick;
+    public final boolean truncated;
+    public final List<ChunkEntry> chunks;
 
     public WeakChunkSnapshot(int dimensionId, long generatedAtTick, boolean truncated, List<ChunkEntry> chunks) {
         if (generatedAtTick < 0L || chunks == null || chunks.size() > MAX_CHUNKS) {
@@ -33,10 +33,10 @@ public class WeakChunkSnapshot {
     @Getter
     public static class ChunkEntry {
 
-        private final int chunkX;
-        private final int chunkZ;
-        private final int entityCount;
-        private final List<EntityTypeCount> entityTypes;
+        public final int chunkX;
+        public final int chunkZ;
+        public final int entityCount;
+        public final List<EntityTypeCount> entityTypes;
 
         public ChunkEntry(int chunkX, int chunkZ, int entityCount, List<EntityTypeCount> entityTypes) {
             if (entityCount < 1 || entityTypes == null || entityTypes.size() > MAX_ENTITY_TYPES) {
@@ -63,8 +63,8 @@ public class WeakChunkSnapshot {
     @Getter
     public static class EntityTypeCount {
 
-        private final String typeId;
-        private final int count;
+        public final String typeId;
+        public final int count;
 
         public EntityTypeCount(String typeId, int count) {
             if (typeId == null || typeId.length() == 0 || typeId.length() > MAX_TYPE_ID_LENGTH || count < 1) {

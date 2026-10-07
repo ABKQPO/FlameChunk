@@ -5,14 +5,22 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.hfstudio.flamechunk.FlameChunk;
+import com.hfstudio.flamechunk.api.client.map.MapOverlayApi;
 import com.hfstudio.flamechunk.common.integration.Mods;
 
 public class ClientMapIntegrations {
 
-    private final List<MapOverlaySink> sinks = new ArrayList<>();
+    public final List<MapOverlaySink> sinks = new ArrayList<>();
+
+    public static boolean hasMapIntegration() {
+        return Mods.hasMapIntegration() || MapOverlayApi.hasRegisteredIntegration();
+    }
 
     public void initialize() {
-        if (Mods.JourneyMap6.isModLoaded()) {
+        for (MapOverlaySink integration : MapOverlayApi.registeredIntegrations()) {
+            register(integration);
+        }
+        if (Mods.JourneyMap6.isModLoaded() && Mods.JourneyMapApi.isModLoaded()) {
             try {
                 sinks.add(JourneyMap6Adapter.createBridge());
                 FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");
@@ -34,6 +42,28 @@ public class ClientMapIntegrations {
             } catch (RuntimeException | LinkageError exception) {
                 FlameChunk.LOG.warn("Disabling a failed map heatmap integration", exception);
                 iterator.remove();
+            }
+        }
+    }
+
+    public void register(MapOverlaySink sink) {
+        if (!sinks.contains(sink)) {
+            sinks.add(sink);
+            try {
+                sink.publish(ClientMapOverlayState.get());
+            } catch (RuntimeException | LinkageError exception) {
+                sinks.remove(sink);
+                FlameChunk.LOG.warn("Unable to initialize a map heatmap integration", exception);
+            }
+        }
+    }
+
+    public void unregister(MapOverlaySink sink) {
+        if (sinks.remove(sink)) {
+            try {
+                sink.clear();
+            } catch (RuntimeException | LinkageError exception) {
+                FlameChunk.LOG.debug("Unable to clear a removed map integration", exception);
             }
         }
     }

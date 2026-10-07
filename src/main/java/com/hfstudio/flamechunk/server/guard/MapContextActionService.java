@@ -32,7 +32,7 @@ public class MapContextActionService {
         }
     }
 
-    private static void submitWeakClear(EntityPlayerMP player, MapContextActionPacket request) {
+    public static void submitWeakClear(EntityPlayerMP player, MapContextActionPacket request) {
         WeakChunkClearService service = FlameChunk.instance == null ? null
             : FlameChunk.instance.getWeakChunkClearService();
         if (service == null) {
@@ -57,7 +57,7 @@ public class MapContextActionService {
         }
     }
 
-    private static void toggleLoader(World world, int chunkX, int chunkZ, EntityPlayerMP player) {
+    public static void toggleLoader(World world, int chunkX, int chunkZ, EntityPlayerMP player) {
         int result = LoaderTicketControlService.toggle(world, chunkX, chunkZ);
         if (result == Integer.MIN_VALUE) {
             ServerMessages.send(player, "flamechunk.command.loader.limit");
@@ -69,7 +69,7 @@ public class MapContextActionService {
         ServerMessages.send(player, key, chunkX, chunkZ, affected);
     }
 
-    private static String permission(int action) {
+    public static String permission(int action) {
         return action == MapContextActionPacket.WEAK_ENTITY_CLEAR ? "flamechunk.weakclear" : "flamechunk.loadercontrol";
     }
 }

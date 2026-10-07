@@ -11,8 +11,8 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class ChunkTiming {
 
-    private final long[] nanos = new long[TickCategory.COUNT];
-    private final int[] counts = new int[TickCategory.COUNT];
+    public final long[] nanos = new long[TickCategory.COUNT];
+    public final int[] counts = new int[TickCategory.COUNT];
     public final Map<TickCategory, Map<String, TypeAggregate>> typeTimings = new EnumMap<>(TickCategory.class);
 
     public void add(TickCategory category, long elapsedNanos) {
@@ -86,7 +86,7 @@ public class ChunkTiming {
         return result;
     }
 
-    private Map<String, TypeAggregate> typeMap(TickCategory category) {
+    public Map<String, TypeAggregate> typeMap(TickCategory category) {
         return typeTimings.get(category);
     }
 
@@ -123,7 +123,7 @@ public class ChunkTiming {
         return copy;
     }
 
-    private static long saturatingAdd(long left, long right) {
+    public static long saturatingAdd(long left, long right) {
         if (Long.MAX_VALUE - left < right) {
             return Long.MAX_VALUE;
         }

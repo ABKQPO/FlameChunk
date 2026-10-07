@@ -25,12 +25,12 @@ import lombok.Getter;
 
 public class MapOverlayModel {
 
-    private static final ColorCalculator COLOR_CALCULATOR = new ColorCalculator();
+    public static final ColorCalculator COLOR_CALCULATOR = new ColorCalculator();
 
     @Getter
-    private final List<MapOverlayCell> cells;
+    public final List<MapOverlayCell> cells;
     @Getter(AccessLevel.NONE)
-    private final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<MapOverlayCell>> cellsByPosition;
+    public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<MapOverlayCell>> cellsByPosition;
 
     public MapOverlayModel(List<MapOverlayCell> cells) {
         if (cells == null) {
@@ -150,7 +150,7 @@ public class MapOverlayModel {
         return new MapOverlayModel(cells);
     }
 
-    private static void addCell(List<MapOverlayCell> cells, Int2ObjectOpenHashMap<Long2IntOpenHashMap> positions,
+    public static void addCell(List<MapOverlayCell> cells, Int2ObjectOpenHashMap<Long2IntOpenHashMap> positions,
         MapOverlayCell cell) {
         Long2IntOpenHashMap dimensionPositions = positions.get(cell.getDimensionId());
         if (dimensionPositions == null) {
@@ -173,7 +173,7 @@ public class MapOverlayModel {
         return dimensionIndex == null ? null : dimensionIndex.get(key(chunkX, chunkZ));
     }
 
-    private static long key(int chunkX, int chunkZ) {
+    public static long key(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) ^ (chunkZ & 0xffffffffL);
     }
 

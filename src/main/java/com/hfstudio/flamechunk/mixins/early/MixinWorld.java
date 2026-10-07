@@ -1,55 +1,43 @@
 package com.hfstudio.flamechunk.mixins.early;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+
 @Mixin(World.class)
 public abstract class MixinWorld {
-
-    @Unique
-    private static final ThreadLocal<Deque<Long>> flamechunk$neighborStarts = new ThreadLocal<>();
 
     @Redirect(
         method = "notifyBlockOfNeighborChange",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;onNeighborBlockChange(Lnet/minecraft/world/World;IIILnet/minecraft/block/Block;)V"))
-    public void flamechunk$measureNeighborUpdate(Block block, World world, int x, int y, int z, Block neighbor) {
+    private void flamechunk$measureNeighborUpdate(Block block, World world, int x, int y, int z, Block neighbor) {
         long start = world == null || world.isRemote ? 0L : PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
             : PerformanceSampler
                 .enterWork(TickCategory.BLOCK_UPDATE, world, PerformanceSampler.workTypeName(block.getClass()));
-        Deque<Long> starts = null;
+        LongArrayList starts = null;
         if (start != 0L) {
-            starts = flamechunk$neighborStarts.get();
-            if (starts == null) {
-                starts = new ArrayDeque<>();
-                flamechunk$neighborStarts.set(starts);
-            }
-            starts.push(starts.isEmpty() ? start : 0L);
+            starts = PerformanceSampler.NEIGHBOR_STARTS.get();
+            starts.add(starts.isEmpty() ? start : 0L);
         }
         try {
             block.onNeighborBlockChange(world, x, y, z, neighbor);
         } finally {
             PerformanceSampler.leaveWork(work);
             if (starts != null) {
-                long outerStart = starts.pop();
-                if (starts.isEmpty()) {
-                    flamechunk$neighborStarts.remove();
-                }
+                long outerStart = starts.removeLong(starts.size() - 1);
                 if (outerStart != 0L) {
                     PerformanceSampler.recordBlockTiming(
                         TickCategory.BLOCK_UPDATE,
@@ -68,7 +56,7 @@ public abstract class MixinWorld {
     @Redirect(
         method = "updateEntities",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/tileentity/TileEntity;updateEntity()V"))
-    public void flamechunk$measureTileEntity(TileEntity tileEntity) {
+    private void flamechunk$measureTileEntity(TileEntity tileEntity) {
         World world = (World) (Object) this;
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
@@ -87,7 +75,7 @@ public abstract class MixinWorld {
     @Redirect(
         method = "updateEntities",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/World;updateEntity(Lnet/minecraft/entity/Entity;)V"))
-    public void flamechunk$measureEntity(World world, Entity entity) {
+    private void flamechunk$measureEntity(World world, Entity entity) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
             : PerformanceSampler.enterWork(
@@ -107,7 +95,7 @@ public abstract class MixinWorld {
     @Redirect(
         method = "updateEntityWithOptionalForce",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;onUpdate()V"))
-    public void flamechunk$observeEntityCallback(Entity entity) {
+    private void flamechunk$observeEntityCallback(Entity entity) {
         int work = !PerformanceSampler.isActive() ? 0
             : PerformanceSampler
                 .enterWork(TickCategory.ENTITY, entity.worldObj, PerformanceSampler.workTypeName(entity.getClass()));
@@ -121,7 +109,7 @@ public abstract class MixinWorld {
     @Redirect(
         method = "updateEntityWithOptionalForce",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;updateRidden()V"))
-    public void flamechunk$observePassengerCallback(Entity entity) {
+    private void flamechunk$observePassengerCallback(Entity entity) {
         int work = !PerformanceSampler.isActive() ? 0
             : PerformanceSampler
                 .enterWork(TickCategory.ENTITY, entity.worldObj, PerformanceSampler.workTypeName(entity.getClass()));

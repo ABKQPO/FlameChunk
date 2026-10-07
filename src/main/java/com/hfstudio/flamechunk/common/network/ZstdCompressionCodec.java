@@ -5,7 +5,7 @@ import com.hfstudio.flamechunk.common.config.ServerConfig;
 
 public class ZstdCompressionCodec implements CompressionCodec {
 
-    private static final int COMPRESSION_LEVEL = 3;
+    public static final int COMPRESSION_LEVEL = 3;
 
     @Override
     public byte[] compress(byte[] input) {

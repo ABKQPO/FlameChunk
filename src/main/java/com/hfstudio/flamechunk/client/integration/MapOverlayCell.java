@@ -13,23 +13,23 @@ import lombok.Getter;
 @Getter
 public class MapOverlayCell {
 
-    private final int dimensionId;
-    private final int chunkX;
-    private final int chunkZ;
-    private final int color;
-    private final float opacity;
-    private final String label;
-    private final long[] nanos;
-    private final int[] counts;
-    private final long sampledTicks;
-    private final int entityCount;
-    private final byte loadLevel;
-    private final int ticketSourceCode;
-    private final String ticketSource;
+    public final int dimensionId;
+    public final int chunkX;
+    public final int chunkZ;
+    public final int color;
+    public final float opacity;
+    public final String label;
+    public final long[] nanos;
+    public final int[] counts;
+    public final long sampledTicks;
+    public final int entityCount;
+    public final byte loadLevel;
+    public final int ticketSourceCode;
+    public final String ticketSource;
     @Getter
-    private final boolean weakChunk;
-    private final List<EntityTypeCount> weakEntityTypes;
-    private final List<ChunkTypeTiming> typeTimings;
+    public final boolean weakChunk;
+    public final List<EntityTypeCount> weakEntityTypes;
+    public final List<ChunkTypeTiming> typeTimings;
 
     public int getTicketSourceColor() {
         return ColorUtils.ticketSourceColor(ticketSourceCode);

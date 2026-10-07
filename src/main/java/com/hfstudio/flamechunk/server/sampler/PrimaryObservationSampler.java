@@ -14,6 +14,7 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 import com.hfstudio.flamechunk.server.sampler.WorkContextTracker.Observation;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class PrimaryObservationSampler implements AutoCloseable {
 
@@ -49,7 +50,7 @@ public class PrimaryObservationSampler implements AutoCloseable {
     }
 
     public synchronized void beginTick() {
-        if (!running || tracker.tickId != 0) {
+        if (!running || tracker.tickId != 0 || Thread.currentThread() != tracker.owner) {
             return;
         }
         finalizeOldTicks(false);
@@ -61,7 +62,7 @@ public class PrimaryObservationSampler implements AutoCloseable {
 
     public synchronized void endTick() {
         long id = tracker.tickId;
-        if (id == 0) {
+        if (id == 0 || Thread.currentThread() != tracker.owner) {
             return;
         }
         long elapsed = Math.max(0, System.nanoTime() - currentTickStarted);
@@ -111,8 +112,7 @@ public class PrimaryObservationSampler implements AutoCloseable {
                 aggregates.put(key, new Aggregate());
             }
         }
-        int[] count = tick.counts.computeIfAbsent(key, ignored -> new int[1]);
-        count[0]++;
+        tick.counts.addTo(key, 1);
         tick.attempts++;
     }
 
@@ -145,8 +145,11 @@ public class PrimaryObservationSampler implements AutoCloseable {
         }
         long remaining = tick.nanos;
         int left = tick.counts.size();
-        for (var entry : tick.counts.entrySet()) {
-            int count = entry.getValue()[0];
+        var counts = tick.counts.object2IntEntrySet()
+            .fastIterator();
+        while (counts.hasNext()) {
+            var entry = counts.next();
+            int count = entry.getIntValue();
             long weight = --left == 0 ? remaining
                 : tick.nanos / tick.attempts * count + tick.nanos % tick.attempts * count / tick.attempts;
             remaining -= weight;
@@ -242,7 +245,7 @@ public class PrimaryObservationSampler implements AutoCloseable {
 
     public static class TickSamples {
 
-        public final Map<WorkKey, int[]> counts = new HashMap<>();
+        public final Object2IntOpenHashMap<WorkKey> counts = new Object2IntOpenHashMap<>();
         public long nanos;
         public int attempts;
         public boolean closed;

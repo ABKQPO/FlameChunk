@@ -15,12 +15,12 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 public class LoaderControlData extends WorldSavedData {
 
     public static final String DATA_NAME = "flamechunk_loader_control";
-    private static final int MAX_FROZEN_CHUNKS = 4096;
-    private static final String FROZEN_CHUNKS_TAG = "FrozenChunks";
-    private static final String CHUNK_X_TAG = "X";
-    private static final String CHUNK_Z_TAG = "Z";
+    public static final int MAX_FROZEN_CHUNKS = 4096;
+    public static final String FROZEN_CHUNKS_TAG = "FrozenChunks";
+    public static final String CHUNK_X_TAG = "X";
+    public static final String CHUNK_Z_TAG = "Z";
 
-    private final LongSet frozenChunks = new LongOpenHashSet();
+    public final LongSet frozenChunks = new LongOpenHashSet();
 
     public LoaderControlData(String name) {
         super(name);
@@ -81,7 +81,7 @@ public class LoaderControlData extends WorldSavedData {
         return chunks;
     }
 
-    private static long key(ChunkCoordIntPair chunk) {
+    public static long key(ChunkCoordIntPair chunk) {
         return ChunkCoordIntPair.chunkXZ2Int(chunk.chunkXPos, chunk.chunkZPos);
     }
 }

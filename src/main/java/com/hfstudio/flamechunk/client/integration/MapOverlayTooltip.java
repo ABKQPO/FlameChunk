@@ -17,9 +17,9 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class MapOverlayTooltip {
 
-    private static final int PADDING = 3;
-    private static final int OFFSET = 8;
-    private static final int MARGIN = 2;
+    public static final int PADDING = 3;
+    public static final int OFFSET = 8;
+    public static final int MARGIN = 2;
 
     public static void draw(int mouseX, int mouseY, MapOverlayCell cell, int width, int height) {
         if (cell == null) {
@@ -132,7 +132,7 @@ public class MapOverlayTooltip {
         return lines;
     }
 
-    private static String categoryName(TickCategory category) {
+    public static String categoryName(TickCategory category) {
         if (ClientConfig.tooltipCategoryNamesShort) {
             return category.name()
                 .substring(

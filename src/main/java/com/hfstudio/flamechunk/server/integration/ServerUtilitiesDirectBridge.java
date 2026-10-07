@@ -5,6 +5,7 @@ import net.minecraft.world.World;
 
 import com.hfstudio.flamechunk.FlameChunk;
 
+import cpw.mods.fml.common.Optional;
 import serverutils.data.ClaimedChunk;
 import serverutils.data.ClaimedChunks;
 import serverutils.lib.math.ChunkDimPos;
@@ -19,6 +20,7 @@ public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
     }
 
     @Override
+    @Optional.Method(modid = "serverutilities")
     public void registerPermissions() {
         PermissionAPI.registerNode("flamechunk.scan", DefaultPermissionLevel.OP, "Allow FlameChunk performance scans");
         PermissionAPI.registerNode(
@@ -32,6 +34,7 @@ public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
     }
 
     @Override
+    @Optional.Method(modid = "serverutilities")
     public boolean hasPermission(EntityPlayerMP player, String permission) {
         if (player == null) {
             return true;
@@ -48,6 +51,7 @@ public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
     }
 
     @Override
+    @Optional.Method(modid = "serverutilities")
     public String describeClaim(World world, int chunkX, int chunkZ) {
         if (world == null) {
             return "unclaimed";
