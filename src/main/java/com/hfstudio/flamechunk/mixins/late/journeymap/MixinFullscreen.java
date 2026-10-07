@@ -19,7 +19,7 @@ public abstract class MixinFullscreen {
     @Final
     static MapState state;
 
-    @Inject(method = "func_73863_a", at = @At("RETURN"), remap = false)
+    @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
     private void flamechunk$renderHeatmap(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
         if (state != null) {
             JourneyMap5OverlayRenderer.render(state.getZoom());

@@ -33,7 +33,7 @@ public abstract class MixinGuiMap {
     @Shadow(remap = false)
     public abstract void addGuiButton(GuiButton b);
 
-    @Inject(method = "func_73866_w_", at = @At("RETURN"), remap = false)
+    @Inject(method = "initGui", at = @At("RETURN"), remap = true)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
         addGuiButton(
             new GuiButton(
@@ -53,7 +53,7 @@ public abstract class MixinGuiMap {
                 StatCollector.translateToLocal("flamechunk.client.clear")));
     }
 
-    @Inject(method = "func_146284_a", at = @At("HEAD"), remap = false)
+    @Inject(method = "actionPerformed", at = @At("HEAD"), remap = true)
     private void flamechunk$handleControl(GuiButton button, CallbackInfo callbackInfo) {
         if (button == null) {
             return;
@@ -65,8 +65,9 @@ public abstract class MixinGuiMap {
         }
     }
 
-    @Inject(method = "func_73863_a", at = @At("RETURN"), remap = false)
+    @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
     private void flamechunk$renderHeatmap(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
         XaeroOverlayRenderer.render(cameraX, cameraZ, scale, mouseX, mouseY);
+        XaeroOverlayRenderer.renderScanProgress();
     }
 }

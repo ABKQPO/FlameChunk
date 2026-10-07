@@ -6,9 +6,9 @@ dependencies {
 
     compileOnly('com.github.GTNewHorizons:Navigator:1.1.8:dev') { transitive = false }
     compileOnly('info.journeymap:journeymap-api-forge:1.7.10-2.0.0')
-    compileOnly('maven.modrinth:journeymap:5.2.20')
-    compileOnly('curse.maven:xaeros-minimap-263420:5637000')
-    compileOnly('curse.maven:xaeros-world-map-317780:5658209')
+    compileOnly(rfg.deobf('maven.modrinth:journeymap:5.2.20'))
+    compileOnly(rfg.deobf('curse.maven:xaeros-minimap-263420:5637000'))
+    compileOnly(rfg.deobf('curse.maven:xaeros-world-map-317780:5658209'))
 
     api("com.github.GTNewHorizons:GTNHLib:0.11.52:dev")
     implementation("com.github.GTNewHorizons:GTNHExtLib:1.0.5:dev")
