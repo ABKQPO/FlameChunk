@@ -20,7 +20,7 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 8;
+    private static final int CODEC_VERSION = 9;
     public static final TickCategory[] CATEGORIES = TickCategory.values();
 
     public byte[] encode(ScanSnapshot snapshot) {

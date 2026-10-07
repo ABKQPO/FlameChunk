@@ -13,7 +13,6 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.command.NumberInvalidException;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 
@@ -152,9 +151,9 @@ public class FlameChunkCommand extends CommandBase {
         }
         if (args.length == 1 && "stop".equals(args[0])) {
             if (PerformanceSampler.stopScan(sender)) {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.stopped"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.stopped"));
             } else {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.stop.denied_or_inactive"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.stop.denied_or_inactive"));
             }
             return;
         }
@@ -164,7 +163,7 @@ public class FlameChunkCommand extends CommandBase {
         }
         if (args.length == 1 && "report".equals(args[0])) {
             if (!PerformanceSampler.sendLastReport(sender)) {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.report.empty_or_denied"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.report.empty_or_denied"));
             }
             return;
         }
@@ -172,7 +171,7 @@ public class FlameChunkCommand extends CommandBase {
             if (authorized(sender, "flamechunk.scan")) {
                 LoaderTicketReport.send(sender);
             } else {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.denied"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
             }
             return;
         }
@@ -188,7 +187,7 @@ public class FlameChunkCommand extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
         if (ServerConfig.requireOperator && !sender.canCommandSenderUseCommand(2, getCommandName())) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.denied"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
             return;
         }
         int seconds = ServerConfig.scanSeconds;
@@ -203,14 +202,14 @@ public class FlameChunkCommand extends CommandBase {
             }
         }
         if (PerformanceSampler.isActive()) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.active"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.active"));
             return;
         }
         EntityPlayerMP player = sender instanceof EntityPlayerMP playerSender ? playerSender : null;
         boolean started = player == null ? PerformanceSampler.requestConsoleScan(sender, seconds)
             : PerformanceSampler.requestScan(player, seconds);
         if (!started) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.active"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.active"));
         }
     }
 
@@ -219,7 +218,7 @@ public class FlameChunkCommand extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
         if (!(sender instanceof EntityPlayerMP player)) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.weakclear.player_only"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.weakclear.player_only"));
             return;
         }
         int chunkX = parseCoordinate(args[1]);
@@ -231,15 +230,15 @@ public class FlameChunkCommand extends CommandBase {
         int result = weakChunkClearService.submit(player, chunkX, chunkZ, typeId);
         if (result == WeakChunkClearService.ACCEPTED) {
             sender.addChatMessage(
-                new ChatComponentTranslation("flamechunk.command.weakclear.queued", chunkX, chunkZ, typeId));
+                ServerMessages.translated(sender, "flamechunk.command.weakclear.queued", chunkX, chunkZ, typeId));
         } else if (result == WeakChunkClearService.DENIED) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.denied"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
         } else if (result == WeakChunkClearService.STALE_TARGET) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.weakclear.stale", 0, typeId));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.weakclear.stale", 0, typeId));
         } else if (result == WeakChunkClearService.ALREADY_QUEUED) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.weakclear.already_queued"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.weakclear.already_queued"));
         } else {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.weakclear.queue_full"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.weakclear.queue_full"));
         }
     }
 
@@ -254,17 +253,17 @@ public class FlameChunkCommand extends CommandBase {
     private void processLoaderControl(ICommandSender sender, String[] args) throws CommandException {
         if (args.length == 3 && "frozen".equalsIgnoreCase(args[1])) {
             if (!authorized(sender, "flamechunk.loadercontrol")) {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.denied"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
                 return;
             }
             World world = sender.getEntityWorld();
             if ("list".equalsIgnoreCase(args[2])) {
                 List<ChunkCoordIntPair> frozen = LoaderTicketControlService.frozenChunks(world);
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.loader.list", frozen.size()));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.list", frozen.size()));
                 for (int index = 0; index < frozen.size() && index < 100; index++) {
                     ChunkCoordIntPair chunk = frozen.get(index);
                     sender.addChatMessage(
-                        new ChatComponentTranslation(
+                        ServerMessages.translated(sender,
                             "flamechunk.command.loader.entry",
                             world.provider.dimensionId,
                             chunk.chunkXPos,
@@ -274,7 +273,7 @@ public class FlameChunkCommand extends CommandBase {
             }
             if ("clear-orphans".equalsIgnoreCase(args[2])) {
                 sender.addChatMessage(
-                    new ChatComponentTranslation(
+                    ServerMessages.translated(sender,
                         "flamechunk.command.loader.orphans",
                         LoaderTicketControlService.clearOrphans(world)));
                 return;
@@ -289,7 +288,7 @@ public class FlameChunkCommand extends CommandBase {
         int chunkX = parseCoordinate(args[2]);
         int chunkZ = parseCoordinate(args[3]);
         if (!authorized(sender, "flamechunk.loadercontrol")) {
-            sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.denied"));
+            sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.denied"));
             return;
         }
         World world = sender.getEntityWorld();
@@ -298,22 +297,22 @@ public class FlameChunkCommand extends CommandBase {
         if ("freeze".equals(action)) {
             affected = LoaderTicketControlService.freeze(world, chunkX, chunkZ);
             if (affected < 0) {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.loader.limit"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.limit"));
             } else if (affected == 0) {
                 sender
-                    .addChatMessage(new ChatComponentTranslation("flamechunk.command.loader.missing", chunkX, chunkZ));
+                    .addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.missing", chunkX, chunkZ));
             } else {
                 sender.addChatMessage(
-                    new ChatComponentTranslation("flamechunk.command.loader.frozen", chunkX, chunkZ, affected));
+                    ServerMessages.translated(sender, "flamechunk.command.loader.frozen", chunkX, chunkZ, affected));
             }
         } else if ("unfreeze".equals(action)) {
             affected = LoaderTicketControlService.unfreeze(world, chunkX, chunkZ);
             sender.addChatMessage(
-                new ChatComponentTranslation("flamechunk.command.loader.unfrozen", chunkX, chunkZ, affected));
+                ServerMessages.translated(sender, "flamechunk.command.loader.unfrozen", chunkX, chunkZ, affected));
         } else {
             affected = LoaderTicketControlService.clear(world, chunkX, chunkZ);
             sender.addChatMessage(
-                new ChatComponentTranslation("flamechunk.command.loader.cleared", chunkX, chunkZ, affected));
+                ServerMessages.translated(sender, "flamechunk.command.loader.cleared", chunkX, chunkZ, affected));
         }
     }
 

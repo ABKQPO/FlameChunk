@@ -34,6 +34,8 @@ import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.SnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.WeakChunkSnapshotPacket;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
+import cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -41,6 +43,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent.ClientDisconnectionFromServerEvent;
+import cpw.mods.fml.common.network.FMLNetworkEvent.ClientConnectedToServerEvent;
 import lombok.Getter;
 
 public class ClientProxy extends CommonProxy {
@@ -107,7 +110,20 @@ public class ClientProxy extends CommonProxy {
     public void handleScanStatus(final int status) {
         Minecraft.getMinecraft()
             .func_152344_a(() -> {
-                snapshotStorage.setScanStatus(status);
+                if (status >= ScanProgressPacket.SUBSCRIBED && status <= ScanProgressPacket.SUBSCRIPTION_DENIED) {
+                    MapOverlayControls.handleSubscriptionStatus(status);
+                    if (status != ScanProgressPacket.SUBSCRIPTION_DENIED) {
+                        return;
+                    }
+                    snapshotStorage.setScanStatus(-1);
+                } else {
+                    snapshotStorage.setScanStatus(status);
+                    if (status == ScanProgressPacket.PROTOCOL_MISMATCH) {
+                        MapOverlayControls.subscriptionDenied = true;
+                    } else if (status == ScanProgressPacket.QUEUE_FULL) {
+                        MapOverlayControls.retrySubscription();
+                    }
+                }
                 Minecraft.getMinecraft().ingameGUI.getChatGUI()
                     .printChatMessage(new ChatComponentTranslation("flamechunk.client.scanStatus." + status));
             });
@@ -140,8 +156,25 @@ public class ClientProxy extends CommonProxy {
     }
 
     @SubscribeEvent
+    public void onClientConnect(ClientConnectedToServerEvent event) {
+        Minecraft.getMinecraft().func_152344_a(() -> MapOverlayControls.setConnection(event.manager, event.isLocal));
+    }
+
+    @SubscribeEvent
+    public void onClientTick(ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            MapOverlayControls.updateSubscription();
+        }
+    }
+
+    @SubscribeEvent
     public void onClientDisconnect(ClientDisconnectionFromServerEvent event) {
-        clearClientState();
+        Minecraft.getMinecraft().func_152344_a(() -> {
+            if (MapOverlayControls.connection == event.manager) {
+                MapOverlayControls.setConnection(null, false);
+                clearClientState();
+            }
+        });
     }
 
     @SubscribeEvent
@@ -165,6 +198,9 @@ public class ClientProxy extends CommonProxy {
     }
 
     private void showReport(ScanSnapshot snapshot, boolean finalSnapshot) {
+        if (!finalSnapshot) {
+            return;
+        }
         ReportOutputMode outputMode = ClientConfig.reportOutputMode;
         Minecraft minecraft = Minecraft.getMinecraft();
         if (outputMode != ReportOutputMode.CHAT && minecraft.currentScreen == null) {

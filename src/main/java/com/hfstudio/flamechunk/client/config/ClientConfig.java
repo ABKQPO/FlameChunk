@@ -52,6 +52,10 @@ public class ClientConfig {
     @Config.DefaultBoolean(true)
     public static boolean showLoaderSources = true;
 
+    @Config.Comment("Subscribe to live performance reports from the connected FlameChunk server")
+    @Config.DefaultBoolean(true)
+    public static boolean liveUpdates = true;
+
     @Config.Comment("Display object hotspots and chunk beams when a map integration is available")
     @Config.DefaultBoolean(true)
     public static boolean worldOverlayEnabled = true;
@@ -110,6 +114,7 @@ public class ClientConfig {
         heatAlpha = 0.35F;
         showWeakIdleChunks = true;
         showLoaderSources = true;
+        liveUpdates = true;
         worldOverlayEnabled = true;
         worldOverlayShowAll = false;
         tooltipCoordinates = true;

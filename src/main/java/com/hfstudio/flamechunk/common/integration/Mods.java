@@ -11,6 +11,8 @@ import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ModContainer;
+import net.minecraft.network.NetworkManager;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 
 public enum Mods implements IMod, ITargetMod {
 
@@ -72,6 +74,10 @@ public enum Mods implements IMod, ITargetMod {
 
     public static boolean hasMapIntegration() {
         return JourneyMap.isModLoaded() || XaeroWorldMap.isModLoaded() || XaeroMinimap.isModLoaded();
+    }
+
+    public static boolean hasRemoteFlameChunk(NetworkManager manager) {
+        return PeerChannels.isAvailable(manager);
     }
 
     @Override

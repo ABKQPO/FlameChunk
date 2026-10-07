@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.network.NetworkManager;
 
 import com.hfstudio.flamechunk.ClientProxy;
 import com.hfstudio.flamechunk.FlameChunk;
@@ -24,15 +25,77 @@ import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.MapContextActionPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
+import com.hfstudio.flamechunk.common.integration.Mods;
 
 public class MapOverlayControls {
 
     private static int lastWeakSnapshotDimension = Integer.MIN_VALUE;
     private static long lastWeakSnapshotRequestMillis;
+    public static volatile NetworkManager connection;
+    public static boolean subscribed;
+    public static boolean subscriptionDenied;
+    public static boolean subscribedWorldHotspots;
+    public static long nextSubscriptionAttemptNanos;
+
+    public static void setConnection(NetworkManager manager, boolean local) {
+        connection = manager;
+        subscribed = false;
+        subscriptionDenied = false;
+        subscribedWorldHotspots = false;
+        nextSubscriptionAttemptNanos = 0L;
+        if (local) {
+            PeerChannels.setAvailable(manager, true);
+        }
+    }
+
+    public static boolean isServerAvailable() {
+        return FlameChunk.network != null && Mods.hasRemoteFlameChunk(connection);
+    }
+
+    public static void updateSubscription() {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        if (minecraft.theWorld == null || !isServerAvailable()) {
+            return;
+        }
+        boolean requested = ClientConfig.liveUpdates && !subscriptionDenied;
+        boolean worldHotspots = ClientConfig.worldOverlayEnabled && Mods.hasMapIntegration();
+        if (System.nanoTime() < nextSubscriptionAttemptNanos) {
+            return;
+        }
+        if (requested != subscribed || requested && worldHotspots != subscribedWorldHotspots) {
+            FlameChunk.network.sendToServer(requested ? ScanRequestPacket.subscribeRequest(worldHotspots)
+                : ScanRequestPacket.unsubscribeRequest());
+            subscribed = requested;
+            subscribedWorldHotspots = worldHotspots;
+            nextSubscriptionAttemptNanos = System.nanoTime() + 1000000000L;
+        }
+    }
+
+    public static void handleSubscriptionStatus(int status) {
+        if (status == ScanProgressPacket.SUBSCRIPTION_DENIED) {
+            subscribed = false;
+            subscriptionDenied = true;
+        } else if (status == ScanProgressPacket.SUBSCRIBED) {
+            subscribed = true;
+            subscriptionDenied = false;
+        } else if (status == ScanProgressPacket.UNSUBSCRIBED) {
+            subscribed = false;
+        }
+    }
+
+    public static void retrySubscription() {
+        subscribed = false;
+        nextSubscriptionAttemptNanos = System.nanoTime() + 5000000000L;
+    }
 
     public static void requestScan() {
         ClientSnapshotStorage storage = clientStorage();
         if (storage == null || storage.hasPendingScan() || FlameChunk.network == null) {
+            return;
+        }
+        if (!isServerAvailable()) {
+            storage.setScanStatus(ScanProgressPacket.SERVER_UNAVAILABLE);
             return;
         }
         Minecraft minecraft = Minecraft.getMinecraft();
@@ -42,6 +105,7 @@ public class MapOverlayControls {
             return;
         }
         storage.setScanStatus(0);
+        subscriptionDenied = false;
         try {
             FlameChunk.network.sendToServer(new ScanRequestPacket(ClientConfig.scanSeconds));
         } catch (RuntimeException exception) {
@@ -57,7 +121,7 @@ public class MapOverlayControls {
     }
 
     public static void requestStop() {
-        if (FlameChunk.network != null && Minecraft.getMinecraft().theWorld != null) {
+        if (isServerAvailable() && Minecraft.getMinecraft().theWorld != null) {
             try {
                 FlameChunk.network.sendToServer(ScanRequestPacket.stopScanRequest());
             } catch (RuntimeException exception) {
@@ -73,7 +137,7 @@ public class MapOverlayControls {
 
     public static void requestWeakSnapshot() {
         Minecraft minecraft = Minecraft.getMinecraft();
-        if (FlameChunk.network == null || minecraft.theWorld == null) {
+        if (!isServerAvailable() || minecraft.theWorld == null) {
             return;
         }
         int dimensionId = minecraft.theWorld.provider.dimensionId;
@@ -206,7 +270,7 @@ public class MapOverlayControls {
 
     private static void sendMapContextAction(int action, int dimensionId, int chunkX, int chunkZ, String entityType) {
         Minecraft minecraft = Minecraft.getMinecraft();
-        if (FlameChunk.network == null || minecraft.theWorld == null
+        if (!isServerAvailable() || minecraft.theWorld == null
             || minecraft.theWorld.provider.dimensionId != dimensionId) {
             return;
         }

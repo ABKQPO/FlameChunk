@@ -11,6 +11,7 @@ import net.minecraft.util.StatCollector;
 import org.lwjgl.input.Mouse;
 
 import com.hfstudio.flamechunk.client.config.ClientConfig;
+import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.config.ReportOutputMode;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
@@ -54,6 +55,7 @@ public class ClientSettingsScreen extends GuiScreen {
         buttonList.add(new GuiButton(16, left, top + row * 7, 142, 20, ""));
         buttonList.add(new GuiButton(17, left, top + row * 8, 142, 20, ""));
         buttonList.add(new GuiButton(18, left, top + row * 9, 142, 20, ""));
+        buttonList.add(new GuiButton(19, left, top + row * 10, 142, 20, ""));
         categoryButtonIds = new int[TickCategory.COUNT];
         for (int index = 0; index < categoryButtonIds.length; index++) {
             int id = 20 + index;
@@ -144,6 +146,10 @@ public class ClientSettingsScreen extends GuiScreen {
                 break;
             case 18:
                 ClientConfig.worldOverlayShowAll = !ClientConfig.worldOverlayShowAll;
+                break;
+            case 19:
+                ClientConfig.liveUpdates = !ClientConfig.liveUpdates;
+                MapOverlayControls.subscriptionDenied = false;
                 break;
             case 40:
                 mc.displayGuiScreen(parent);
@@ -256,6 +262,7 @@ public class ClientSettingsScreen extends GuiScreen {
                         .toLowerCase(Locale.ENGLISH))));
         label(17, translated("flamechunk.settings.worldOverlay", enabled(ClientConfig.worldOverlayEnabled)));
         label(18, translated("flamechunk.settings.worldOverlayShowAll", enabled(ClientConfig.worldOverlayShowAll)));
+        label(19, translated("flamechunk.settings.liveUpdates", enabled(ClientConfig.liveUpdates)));
         label(40, StatCollector.translateToLocal("flamechunk.settings.done"));
         label(41, StatCollector.translateToLocal("flamechunk.settings.reset"));
         for (int index = 0; index < categoryButtonIds.length; index++) {

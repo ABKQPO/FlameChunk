@@ -12,7 +12,7 @@ import cpw.mods.fml.relauncher.Side;
 
 public class NetworkHandler {
 
-    public static final int PROTOCOL_MAGIC = 0x46434B32;
+    public static final int PROTOCOL_MAGIC = 0x46434B33;
 
     public static void register(SimpleNetworkWrapper network) {
         network.registerMessage(ScanRequestHandler.class, ScanRequestPacket.class, 0, Side.SERVER);

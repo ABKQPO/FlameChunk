@@ -106,7 +106,7 @@ public class ClientSnapshotStorage {
             scanning = false;
             return;
         }
-        if (value >= ScanProgressPacket.QUEUED && value <= ScanProgressPacket.LOCAL_GAME_PAUSED) {
+        if (value >= ScanProgressPacket.QUEUED && value <= ScanProgressPacket.SERVER_UNAVAILABLE) {
             status = value;
             scanning = value == ScanProgressPacket.STARTED;
         }

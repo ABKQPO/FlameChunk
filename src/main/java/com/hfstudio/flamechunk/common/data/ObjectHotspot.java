@@ -4,7 +4,7 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class ObjectHotspot {
 
-    public static final int MAX_PER_DIMENSION = 128;
+    public static final int MAX_PER_DIMENSION = 4096;
     public final TickCategory category;
     public final String typeName;
     public final int entityId;

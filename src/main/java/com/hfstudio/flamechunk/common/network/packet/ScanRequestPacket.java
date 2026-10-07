@@ -12,6 +12,9 @@ public class ScanRequestPacket implements IMessage {
 
     public static final int WEAK_SNAPSHOT_REQUEST = -1;
     public static final int STOP_SCAN_REQUEST = -2;
+    public static final int SUBSCRIBE_REQUEST = -3;
+    public static final int UNSUBSCRIBE_REQUEST = -4;
+    public static final int SUBSCRIBE_WORLD_REQUEST = -5;
 
     private int seconds;
     private boolean valid = true;
@@ -34,8 +37,32 @@ public class ScanRequestPacket implements IMessage {
         return new ScanRequestPacket(STOP_SCAN_REQUEST);
     }
 
+    public static ScanRequestPacket subscribeRequest() {
+        return new ScanRequestPacket(SUBSCRIBE_REQUEST);
+    }
+
+    public static ScanRequestPacket subscribeRequest(boolean worldHotspots) {
+        return new ScanRequestPacket(worldHotspots ? SUBSCRIBE_WORLD_REQUEST : SUBSCRIBE_REQUEST);
+    }
+
+    public static ScanRequestPacket unsubscribeRequest() {
+        return new ScanRequestPacket(UNSUBSCRIBE_REQUEST);
+    }
+
     public boolean isStopScanRequest() {
         return seconds == STOP_SCAN_REQUEST;
+    }
+
+    public boolean isSubscribeRequest() {
+        return seconds == SUBSCRIBE_REQUEST || seconds == SUBSCRIBE_WORLD_REQUEST;
+    }
+
+    public boolean requestsWorldHotspots() {
+        return seconds == SUBSCRIBE_WORLD_REQUEST;
+    }
+
+    public boolean isUnsubscribeRequest() {
+        return seconds == UNSUBSCRIBE_REQUEST;
     }
 
     @Override
@@ -52,7 +79,9 @@ public class ScanRequestPacket implements IMessage {
                 seconds = value;
                 weakSnapshotRequest = true;
                 valid = true;
-            } else if (value == STOP_SCAN_REQUEST || ScanLimits.isValidDuration(value)) {
+            } else if (value == STOP_SCAN_REQUEST || value == SUBSCRIBE_REQUEST || value == UNSUBSCRIBE_REQUEST
+                || value == SUBSCRIBE_WORLD_REQUEST
+                || ScanLimits.isValidDuration(value)) {
                 seconds = value;
                 valid = true;
             }

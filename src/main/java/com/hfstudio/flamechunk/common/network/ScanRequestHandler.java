@@ -33,6 +33,13 @@ public class ScanRequestHandler implements IMessageHandler<ScanRequestPacket, IM
             return null;
         }
         EntityPlayerMP player = context.getServerHandler().playerEntity;
+        PeerChannels.setAvailable(context.getServerHandler().netManager, true);
+        if (message.isSubscribeRequest() || message.isUnsubscribeRequest()) {
+            if (!PerformanceSampler.enqueueScan(player, message.getSeconds())) {
+                FlameChunk.network.sendTo(ScanProgressPacket.forStatus(ScanProgressPacket.QUEUE_FULL), player);
+            }
+            return null;
+        }
         if (message.isStopScanRequest()) {
             MinecraftServer server = MinecraftServer.getServer();
             if (server != null && player != null) {

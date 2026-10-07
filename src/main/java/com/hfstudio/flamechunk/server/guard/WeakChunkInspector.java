@@ -19,6 +19,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
 import com.hfstudio.flamechunk.FlameChunk;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
@@ -166,7 +167,7 @@ public class WeakChunkInspector {
                 snapshotRequestCount.decrementAndGet();
                 continue;
             }
-            if (FlameChunk.network != null) {
+            if (FlameChunk.network != null && PeerChannels.canSend(request.player)) {
                 try {
                     FlameChunk.network.sendTo(new WeakChunkSnapshotPacket(snapshot), request.player);
                 } catch (RuntimeException exception) {

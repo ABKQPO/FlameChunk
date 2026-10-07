@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.ObjectHotspot;
@@ -17,6 +18,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 public class ObjectHotspotStore {
 
     public static final int MAX_TRACKED_OBJECTS = 4096;
+    public static final int REPORT_OBJECT_LIMIT = 128;
     public final Int2ObjectOpenHashMap<Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>>> dimensions = new Int2ObjectOpenHashMap<>();
     public int size;
 
@@ -101,7 +103,7 @@ public class ObjectHotspotStore {
                 .thenComparingInt(value -> value.x)
                 .thenComparingInt(value -> value.y)
                 .thenComparingInt(value -> value.z));
-        int limit = Math.min(ranked.size(), ObjectHotspot.MAX_PER_DIMENSION);
+        int limit = Math.min(ranked.size(), REPORT_OBJECT_LIMIT);
         List<ObjectHotspot> result = new ArrayList<>(limit);
         for (int index = 0; index < limit; index++) {
             Aggregate value = ranked.get(index);
@@ -125,6 +127,55 @@ public class ObjectHotspotStore {
     public void clear() {
         dimensions.clear();
         size = 0;
+    }
+
+    public List<ObjectHotspot> snapshotNear(int dimensionId, double x, double y, double z, int radius, int limit) {
+        Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>> categories = dimensions.get(dimensionId);
+        if (categories == null || limit < 1 || radius < 1) {
+            return Collections.emptyList();
+        }
+        int boundedLimit = Math.min(limit, ObjectHotspot.MAX_PER_DIMENSION);
+        double radiusSquared = (double) radius * radius;
+        Comparator<Aggregate> bestFirst = Comparator.comparingLong((Aggregate value) -> value.nanos)
+            .reversed()
+            .thenComparingDouble(value -> distanceSquared(value, x, y, z))
+            .thenComparingInt(value -> value.entityId)
+            .thenComparingInt(value -> value.x)
+            .thenComparingInt(value -> value.y)
+            .thenComparingInt(value -> value.z);
+        PriorityQueue<Aggregate> selected = new PriorityQueue<>(boundedLimit, bestFirst.reversed());
+        for (TickCategory category : List.of(TickCategory.ENTITY, TickCategory.BLOCK_ENTITY)) {
+            Long2ObjectOpenHashMap<Aggregate> objects = categories.get(category);
+            if (objects == null) {
+                continue;
+            }
+            for (Aggregate value : objects.values()) {
+                if (distanceSquared(value, x, y, z) > radiusSquared) {
+                    continue;
+                }
+                if (selected.size() < boundedLimit) {
+                    selected.add(value);
+                } else if (bestFirst.compare(value, selected.peek()) < 0) {
+                    selected.poll();
+                    selected.add(value);
+                }
+            }
+        }
+        List<Aggregate> ranked = new ArrayList<>(selected);
+        ranked.sort(bestFirst);
+        List<ObjectHotspot> result = new ArrayList<>(ranked.size());
+        for (Aggregate value : ranked) {
+            result.add(new ObjectHotspot(value.category, value.typeName, value.entityId, value.identityMost,
+                value.identityLeast, value.x, value.y, value.z, value.nanos, value.peakNanos, value.count));
+        }
+        return result;
+    }
+
+    public static double distanceSquared(Aggregate value, double x, double y, double z) {
+        double dx = value.x + 0.5D - x;
+        double dy = value.y + 0.5D - y;
+        double dz = value.z + 0.5D - z;
+        return dx * dx + dy * dy + dz * dz;
     }
 
     public static class Aggregate {

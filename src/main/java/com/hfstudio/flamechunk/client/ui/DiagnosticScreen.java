@@ -27,7 +27,6 @@ import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
 import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
-import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class DiagnosticScreen extends GuiScreen {
@@ -186,16 +185,7 @@ public class DiagnosticScreen extends GuiScreen {
     }
 
     private void requestScan() {
-        if (storage.hasPendingScan() || FlameChunk.network == null) {
-            return;
-        }
-        storage.setScanStatus(0);
-        try {
-            FlameChunk.network.sendToServer(new ScanRequestPacket(ClientConfig.scanSeconds));
-        } catch (RuntimeException exception) {
-            storage.setScanStatus(-1);
-            FlameChunk.LOG.warn("Unable to request a FlameChunk scan", exception);
-        }
+        MapOverlayControls.requestScan();
     }
 
     private void updateButtons() {

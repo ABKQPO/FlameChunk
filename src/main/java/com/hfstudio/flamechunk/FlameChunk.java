@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.network.NetworkHandler;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.server.command.FlameChunkCommand;
 import com.hfstudio.flamechunk.server.guard.EntityLoadGuard;
 import com.hfstudio.flamechunk.server.guard.WeakChunkClearService;
@@ -64,6 +65,7 @@ public class FlameChunk {
         }
         network = NetworkRegistry.INSTANCE.newSimpleChannel(MODID);
         NetworkHandler.register(network);
+        FMLCommonHandler.instance().bus().register(new PeerChannels());
         serverUtilities = ServerUtilitiesBridge.create();
         sampler = new PerformanceSampler(serverUtilities);
         entityLoadGuard = new EntityLoadGuard(serverUtilities);

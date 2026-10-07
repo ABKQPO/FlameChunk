@@ -9,12 +9,12 @@ import java.util.Map;
 
 import net.minecraft.command.ICommandSender;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
 import com.google.common.collect.ImmutableSetMultimap;
+import com.hfstudio.flamechunk.server.command.ServerMessages;
 
 public class LoaderTicketReport {
 
@@ -37,7 +37,7 @@ public class LoaderTicketReport {
             ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets = ForgeChunkManager
                 .getPersistentChunksFor(world);
             sender.addChatMessage(
-                new ChatComponentTranslation(
+                ServerMessages.translated(sender,
                     "flamechunk.command.tickets.dimension",
                     world.provider.dimensionId,
                     tickets.size()));
@@ -63,32 +63,32 @@ public class LoaderTicketReport {
             for (int index = 0; index < displayed; index++) {
                 TicketEntry entry = rows.get(index);
                 sender.addChatMessage(
-                    new ChatComponentTranslation(
+                    ServerMessages.translated(sender,
                         "flamechunk.command.tickets.entry",
                         entry.chunkX,
                         entry.chunkZ,
                         entry.source));
             }
             if (rows.isEmpty()) {
-                sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.tickets.empty"));
+                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.tickets.empty"));
             } else if (tickets.size() > displayed) {
                 sender.addChatMessage(
-                    new ChatComponentTranslation("flamechunk.command.tickets.truncated", tickets.size() - displayed));
+                    ServerMessages.translated(sender, "flamechunk.command.tickets.truncated", tickets.size() - displayed));
             }
             List<ChunkCoordIntPair> frozen = LoaderTicketControlService.frozenChunks(world);
             sender.addChatMessage(
-                new ChatComponentTranslation("flamechunk.command.tickets.frozen_header", frozen.size()));
+                ServerMessages.translated(sender, "flamechunk.command.tickets.frozen_header", frozen.size()));
             for (int index = 0; index < frozen.size() && index < MAX_TICKET_ROWS_PER_DIMENSION; index++) {
                 ChunkCoordIntPair chunk = frozen.get(index);
                 sender.addChatMessage(
-                    new ChatComponentTranslation(
+                    ServerMessages.translated(sender,
                         "flamechunk.command.tickets.frozen_entry",
                         chunk.chunkXPos,
                         chunk.chunkZPos));
             }
             if (frozen.size() > MAX_TICKET_ROWS_PER_DIMENSION) {
                 sender.addChatMessage(
-                    new ChatComponentTranslation(
+                    ServerMessages.translated(sender,
                         "flamechunk.command.tickets.truncated",
                         frozen.size() - MAX_TICKET_ROWS_PER_DIMENSION));
             }

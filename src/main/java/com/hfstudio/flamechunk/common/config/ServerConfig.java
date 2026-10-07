@@ -45,6 +45,20 @@ public class ServerConfig {
     @Config.DefaultBoolean(true)
     public static boolean requireOperator = true;
 
+    @Config.Comment("Allow non-operators to view live snapshots without granting administrative permissions")
+    @Config.DefaultBoolean(false)
+    public static boolean allowNonOperatorSubscriptions = false;
+
+    @Config.Comment("Maximum nearby entity and block-entity hotspots sent to each live subscriber")
+    @Config.DefaultInt(2048)
+    @Config.RangeInt(min = 256, max = 4096)
+    public static int worldHotspotLimit = 2048;
+
+    @Config.Comment("Maximum distance in blocks for per-subscriber world hotspots")
+    @Config.DefaultInt(128)
+    @Config.RangeInt(min = 16, max = 512)
+    public static int worldHotspotRadius = 128;
+
     @Config.Comment("Enable bounded entity load diagnostics")
     @Config.DefaultBoolean(true)
     public static boolean entityLoadDiagnostics = true;
