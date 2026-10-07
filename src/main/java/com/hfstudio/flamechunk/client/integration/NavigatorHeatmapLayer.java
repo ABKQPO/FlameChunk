@@ -104,20 +104,12 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
             if (cellMinX > maxBlockX || cellMaxX < minBlockX || cellMinZ > maxBlockZ || cellMaxZ < minBlockZ) {
                 continue;
             }
-            locations.add(new CellLocation(cell));
+            locations.add(new CellLocation(this, cell));
             visibleCellKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
             if (!hasAnchor) {
                 batchAnchorKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
                 hasAnchor = true;
             }
-        }
-    }
-
-    @Override
-    public void updateElement(ILocationProvider location) {
-        if (location instanceof CellLocation cellLocation) {
-            cellLocation.cell = model
-                .find(cellLocation.getDimensionId(), cellLocation.getChunkX(), cellLocation.getChunkZ());
         }
     }
 
@@ -152,8 +144,7 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
     }
 
     public boolean isBatchAnchor(CellLocation location) {
-        return location.cell != null
-            && batchAnchorKeys.contains(MapOverlayModel.key(location.getChunkX(), location.getChunkZ()));
+        return batchAnchorKeys.contains(MapOverlayModel.key(location.getChunkX(), location.getChunkZ()));
     }
 
     public void drawTile(CellLocation anchor, double centerX, double centerZ) {
@@ -218,30 +209,36 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
     public static class CellLocation implements ILocationProvider {
 
-        public MapOverlayCell cell;
+        public final NavigatorHeatmapLayer owner;
+        public final int dimensionId;
+        public final int chunkX;
+        public final int chunkZ;
         public double stepScale = 1.0D;
 
-        public CellLocation(MapOverlayCell cell) {
-            this.cell = cell;
+        public CellLocation(NavigatorHeatmapLayer owner, MapOverlayCell cell) {
+            this.owner = owner;
+            this.dimensionId = cell.getDimensionId();
+            this.chunkX = cell.getChunkX();
+            this.chunkZ = cell.getChunkZ();
         }
 
         @Override
         public int getDimensionId() {
-            return cell.getDimensionId();
+            return dimensionId;
         }
 
         @Override
         public double getBlockX() {
-            return (cell.getChunkX() << 4) + 8.0D;
+            return (chunkX << 4) + 8.0D;
         }
 
         @Override
         public double getBlockZ() {
-            return (cell.getChunkZ() << 4) + 8.0D;
+            return (chunkZ << 4) + 8.0D;
         }
 
         public MapOverlayCell getCell() {
-            return cell;
+            return owner.model.find(dimensionId, chunkX, chunkZ);
         }
     }
 
@@ -257,7 +254,7 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
         @Override
         public void draw(double x, double y, float drawScale, double zoom) {
-            if (!owner.isBatchAnchor(location)) {
+            if (location.getCell() == null || !owner.isBatchAnchor(location)) {
                 return;
             }
             location.stepScale = isJourneyMap ? blockSize : 1.0D;

@@ -1,5 +1,7 @@
 package com.hfstudio.flamechunk.client.integration;
 
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.Tessellator;
@@ -12,6 +14,9 @@ import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
+
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 public class XaeroOverlayRenderer {
 
@@ -117,8 +122,8 @@ public class XaeroOverlayRenderer {
         if (!Double.isFinite(scale) || scale <= 0.0D || width <= 0 || height <= 0) {
             return;
         }
-        var dimensionCells = model.getCells(dimensionId);
-        if (dimensionCells.isEmpty()) {
+        Long2ObjectOpenHashMap<List<MapOverlayCell>> tiles = model.cellsByTile.get(dimensionId);
+        if (tiles == null || tiles.isEmpty()) {
             return;
         }
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
@@ -134,29 +139,84 @@ public class XaeroOverlayRenderer {
             double maxViewportX = centerAtOrigin ? width * 0.5D : width;
             double minViewportZ = centerAtOrigin ? -height * 0.5D : 0.0D;
             double maxViewportZ = centerAtOrigin ? height * 0.5D : height;
+            int minChunkX = floorChunk(cameraX + (minViewportX - originX) / scale) - 1;
+            int maxChunkX = floorChunk(cameraX + (maxViewportX - originX) / scale) + 1;
+            int minChunkZ = floorChunk(cameraZ + (minViewportZ - originZ) / scale) - 1;
+            int maxChunkZ = floorChunk(cameraZ + (maxViewportZ - originZ) / scale) + 1;
+            int minTileX = Math.floorDiv(minChunkX, MapOverlayModel.TILE_CHUNKS);
+            int maxTileX = Math.floorDiv(maxChunkX, MapOverlayModel.TILE_CHUNKS);
+            int minTileZ = Math.floorDiv(minChunkZ, MapOverlayModel.TILE_CHUNKS);
+            int maxTileZ = Math.floorDiv(maxChunkZ, MapOverlayModel.TILE_CHUNKS);
+            long tileWidth = (long) maxTileX - minTileX + 1L;
+            long tileHeight = (long) maxTileZ - minTileZ + 1L;
             Tessellator tessellator = Tessellator.instance;
             tessellator.startDrawingQuads();
-            for (MapOverlayCell cell : dimensionCells) {
-                double minX = (cell.getChunkX() * 16.0D - cameraX) * scale + originX;
-                double maxX = (cell.getChunkX() * 16.0D + 16.0D - cameraX) * scale + originX;
-                double minZ = (cell.getChunkZ() * 16.0D - cameraZ) * scale + originZ;
-                double maxZ = (cell.getChunkZ() * 16.0D + 16.0D - cameraZ) * scale + originZ;
-                if (maxX < minViewportX || minX > maxViewportX || maxZ < minViewportZ || minZ > maxViewportZ) {
-                    continue;
+            if (tileWidth > 0L && tileHeight > 0L && tileWidth * tileHeight <= tiles.size()) {
+                for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                    for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
+                        List<MapOverlayCell> tileCells = tiles.get(MapOverlayModel.key(tileX, tileZ));
+                        if (tileCells != null) {
+                            drawVisibleTile(
+                                tessellator,
+                                tileCells,
+                                cameraX,
+                                cameraZ,
+                                scale,
+                                originX,
+                                originZ,
+                                minViewportX,
+                                maxViewportX,
+                                minViewportZ,
+                                maxViewportZ);
+                        }
+                    }
                 }
-                tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
-                tessellator.addVertex(minX, minZ, 0.0D);
-                tessellator.addVertex(maxX, minZ, 0.0D);
-                tessellator.addVertex(maxX, maxZ, 0.0D);
-                tessellator.addVertex(minX, maxZ, 0.0D);
-                if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
-                    addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
+            } else {
+                for (Long2ObjectMap.Entry<List<MapOverlayCell>> entry : tiles.long2ObjectEntrySet()) {
+                    int tileX = (int) (entry.getLongKey() >> 32);
+                    int tileZ = (int) entry.getLongKey();
+                    if (tileX >= minTileX && tileX <= maxTileX && tileZ >= minTileZ && tileZ <= maxTileZ) {
+                        drawVisibleTile(
+                            tessellator,
+                            entry.getValue(),
+                            cameraX,
+                            cameraZ,
+                            scale,
+                            originX,
+                            originZ,
+                            minViewportX,
+                            maxViewportX,
+                            minViewportZ,
+                            maxViewportZ);
+                    }
                 }
             }
             tessellator.draw();
         } finally {
             GL11.glPopMatrix();
             GL11.glPopAttrib();
+        }
+    }
+
+    private static void drawVisibleTile(Tessellator tessellator, List<MapOverlayCell> cells, double cameraX,
+        double cameraZ, double scale, double originX, double originZ, double minViewportX, double maxViewportX,
+        double minViewportZ, double maxViewportZ) {
+        for (MapOverlayCell cell : cells) {
+            double minX = (cell.getChunkX() * 16.0D - cameraX) * scale + originX;
+            double maxX = (cell.getChunkX() * 16.0D + 16.0D - cameraX) * scale + originX;
+            double minZ = (cell.getChunkZ() * 16.0D - cameraZ) * scale + originZ;
+            double maxZ = (cell.getChunkZ() * 16.0D + 16.0D - cameraZ) * scale + originZ;
+            if (maxX < minViewportX || minX > maxViewportX || maxZ < minViewportZ || minZ > maxViewportZ) {
+                continue;
+            }
+            tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
+            tessellator.addVertex(minX, minZ, 0.0D);
+            tessellator.addVertex(maxX, minZ, 0.0D);
+            tessellator.addVertex(maxX, maxZ, 0.0D);
+            tessellator.addVertex(minX, maxZ, 0.0D);
+            if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
+                addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
+            }
         }
     }
 

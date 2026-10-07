@@ -34,7 +34,12 @@ public class JourneyMap5OverlayRenderer {
             if (screen == null) {
                 return;
             }
-            for (GuiButton button : screen.getButtonList()) {
+            for (int index = 0; index < screen.getButtonList()
+                .size(); index++) {
+                if (!(screen.getButtonList()
+                    .get(index) instanceof GuiButton button)) {
+                    continue;
+                }
                 if (button.visible && mouseX >= button.xPosition
                     && mouseY >= button.yPosition
                     && mouseX < button.xPosition + button.width
@@ -90,7 +95,12 @@ public class JourneyMap5OverlayRenderer {
             || Minecraft.getMinecraft().theWorld == null) {
             return;
         }
-        for (GuiButton button : screen.getButtonList()) {
+        for (int index = 0; index < screen.getButtonList()
+            .size(); index++) {
+            if (!(screen.getButtonList()
+                .get(index) instanceof GuiButton button)) {
+                continue;
+            }
             if (button.visible && mouseX >= button.xPosition
                 && mouseY >= button.yPosition
                 && mouseX < button.xPosition + button.width
@@ -123,7 +133,12 @@ public class JourneyMap5OverlayRenderer {
             || renderer.getMapType() == null) {
             return;
         }
-        for (GuiButton button : screen.getButtonList()) {
+        for (int index = 0; index < screen.getButtonList()
+            .size(); index++) {
+            if (!(screen.getButtonList()
+                .get(index) instanceof GuiButton button)) {
+                continue;
+            }
             if (button.visible && mouseX >= button.xPosition
                 && mouseY >= button.yPosition
                 && mouseX < button.xPosition + button.width

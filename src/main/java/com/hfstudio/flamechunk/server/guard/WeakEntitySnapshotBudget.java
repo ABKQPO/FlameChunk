@@ -10,7 +10,7 @@ public class WeakEntitySnapshotBudget {
     public static final int MAX_RETAINED_ENTITIES = 1000000;
     public static int retainedEntities;
 
-    public static List<Entity> capture(List<Entity> entities, int requestedLimit) {
+    public static synchronized List<Entity> capture(List<Entity> entities, int requestedLimit) {
         int available = Math.max(0, MAX_RETAINED_ENTITIES - retainedEntities);
         int snapshotSize = Math.min(entities.size(), Math.min(Math.max(0, requestedLimit), available));
         List<Entity> snapshot = new ArrayList<>(snapshotSize);
@@ -21,7 +21,7 @@ public class WeakEntitySnapshotBudget {
         return snapshot;
     }
 
-    public static void release(int entityCount) {
+    public static synchronized void release(int entityCount) {
         retainedEntities = Math.max(0, retainedEntities - Math.max(0, entityCount));
     }
 }

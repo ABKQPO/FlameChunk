@@ -1,4 +1,21 @@
+configurations {
+    navigatorMapLaunch
+    journeyMap5Launch
+    journeyMap6Launch
+    xaeroLaunch
+}
+
+configurations.journeyMap5Launch.extendsFrom(configurations.navigatorMapLaunch)
+configurations.journeyMap6Launch.extendsFrom(configurations.navigatorMapLaunch)
+configurations.xaeroLaunch.extendsFrom(configurations.navigatorMapLaunch)
+
+configurations.journeyMap6Launch {
+    exclude group: 'net.minecraftforge', module: 'forge'
+}
+
 dependencies {
+    navigatorMapLaunch('com.github.GTNewHorizons:Navigator:1.1.10:dev') { transitive = false }
+
     shadowImplementation("com.github.luben:zstd-jni:1.4.9-5")
     shadowImplementation("net.java.dev.jna:jna:5.12.1")
 
@@ -9,8 +26,14 @@ dependencies {
     compileOnly('info.journeymap:journeymap-api-forge:1.7.10-2.0.0')
     compileOnly(rfg.deobf('curse.maven:journeymap-32274:8879293'))
     compileOnly(rfg.deobf('maven.modrinth:journeymap:1.7.10-6.0.8+forge'))
-    compileOnly(rfg.deobf('curse.maven:xaeros-minimap-263420:5637000'))
-    compileOnly(rfg.deobf('curse.maven:xaeros-world-map-317780:5658209'))
+    compileOnly(rfg.deobf('maven.modrinth:xaeros-minimap:21.10.44_Forge_1.7.10'))
+    compileOnly(rfg.deobf('maven.modrinth:xaeros-world-map:1.14.1.33_Forge_1.7.10'))
+
+    journeyMap5Launch(rfg.deobf('curse.maven:journeymap-32274:8879293'))
+    journeyMap6Launch('info.journeymap:journeymap-api-forge:1.7.10-2.0.0')
+    journeyMap6Launch(rfg.deobf('maven.modrinth:journeymap:1.7.10-6.0.8+forge'))
+    xaeroLaunch(rfg.deobf('maven.modrinth:xaeros-minimap:21.10.44_Forge_1.7.10'))
+    xaeroLaunch(rfg.deobf('maven.modrinth:xaeros-world-map:1.14.1.33_Forge_1.7.10'))
 
     api("com.github.GTNewHorizons:GTNHLib:0.11.52:dev")
     implementation("com.github.GTNewHorizons:GTNHExtLib:1.0.5:dev")

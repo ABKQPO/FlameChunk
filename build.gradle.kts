@@ -33,3 +33,31 @@ runConfigs.forEach { (taskName, path) ->
         }
     }
 }
+
+val mapClientProfiles = mapOf(
+    "runClient25Jm5" to ("run/client_new" to "journeyMap5Launch"),
+    "runClient25Jm6" to ("run/client_new" to "journeyMap6Launch"),
+    "runClient25Xaero" to ("run/client_new" to "xaeroLaunch")
+)
+val requestedMapClientProfileName = gradle.startParameter.taskNames
+    .map { it.substringAfterLast(':') }
+    .firstOrNull(mapClientProfiles::containsKey)
+val requestedMapClientProfile = requestedMapClientProfileName?.let(mapClientProfiles::get)
+
+if (requestedMapClientProfile != null) {
+    tasks.named<JavaExec>("runClient25") {
+        classpath = classpath.plus(configurations.getByName(requestedMapClientProfile.second))
+        workingDir = file("$projectDir/${requestedMapClientProfile.first}")
+        doFirst {
+            workingDir.mkdirs()
+        }
+    }
+}
+
+mapClientProfiles.forEach { (taskName, profile) ->
+    tasks.register(taskName) {
+        group = "application"
+        description = "Runs the Java 25 client with ${profile.second}"
+        dependsOn(tasks.named("runClient25"))
+    }
+}

@@ -1,5 +1,9 @@
 package com.hfstudio.flamechunk.mixins.late.journeymap6;
 
+import java.util.List;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.StatCollector;
 
@@ -14,13 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.integration.MapScanProgressRenderer;
 
-import journeymap.client.ui.component.JmUI;
 import journeymap.client.ui.component.buttons.Button;
+import journeymap.client.ui.component.screens.JmUILegacy;
 import journeymap.client.ui.fullscreen.Fullscreen;
 
 @Pseudo
 @Mixin(value = Fullscreen.class, remap = false)
-public abstract class MixinFullscreen extends JmUI {
+public abstract class MixinFullscreen {
 
     @Unique
     private Button flamechunk$scanButton;
@@ -29,23 +33,18 @@ public abstract class MixinFullscreen extends JmUI {
     @Unique
     private int flamechunk$scanButtonState = Integer.MIN_VALUE;
 
-    @Shadow
+    @Shadow(remap = false)
     public abstract void addRenderableWidget(Button button);
 
-    @Shadow
+    @Shadow(remap = false)
     public abstract boolean isButtonsVisable();
-
-    public MixinFullscreen(String title) {
-        super(title);
-    }
 
     @Inject(method = "layoutButtons", at = @At("TAIL"), remap = false)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
-        Fullscreen screen = (Fullscreen) (Object) this;
         if (flamechunk$scanButton == null) {
             flamechunk$scanButton = new Button(
                 6,
-                height - 24,
+                flamechunk$screenHeight() - 24,
                 new ChatComponentText(MapOverlayControls.scanMenuLabel()),
                 button -> MapOverlayControls.toggleScan());
             flamechunk$scanButton.setWidth(76);
@@ -54,27 +53,28 @@ public abstract class MixinFullscreen extends JmUI {
         if (flamechunk$clearButton == null) {
             flamechunk$clearButton = new Button(
                 86,
-                height - 24,
+                flamechunk$screenHeight() - 24,
                 new ChatComponentText(StatCollector.translateToLocal("flamechunk.client.journeymap.clear")),
                 button -> MapOverlayControls.clear());
             flamechunk$clearButton.setWidth(76);
             flamechunk$clearButton.setHeight(20);
         }
+        List<?> renderables = ((JmUILegacy) (Object) this).getRenderables();
         if (isButtonsVisable()) {
-            if (!getRenderables().contains(flamechunk$scanButton)) {
+            if (!renderables.contains(flamechunk$scanButton)) {
                 addRenderableWidget(flamechunk$scanButton);
             }
-            if (!getRenderables().contains(flamechunk$clearButton)) {
+            if (!renderables.contains(flamechunk$clearButton)) {
                 addRenderableWidget(flamechunk$clearButton);
             }
         } else {
-            getRenderables().remove(flamechunk$scanButton);
-            getRenderables().remove(flamechunk$clearButton);
+            renderables.remove(flamechunk$scanButton);
+            renderables.remove(flamechunk$clearButton);
         }
         flamechunk$scanButton.setPosX(6);
-        flamechunk$scanButton.setPosY(height - 24);
+        flamechunk$scanButton.setPosY(flamechunk$screenHeight() - 24);
         flamechunk$clearButton.setPosX(86);
-        flamechunk$clearButton.setPosY(height - 24);
+        flamechunk$clearButton.setPosY(flamechunk$screenHeight() - 24);
         flamechunk$updateScanButton();
     }
 
@@ -85,7 +85,7 @@ public abstract class MixinFullscreen extends JmUI {
         }
         MapScanProgressRenderer.render(
             6,
-            height - 48,
+            flamechunk$screenHeight() - 48,
             flamechunk$scanButton.getX(),
             flamechunk$scanButton.getY(),
             flamechunk$scanButton.jmGetWidth(),
@@ -103,5 +103,11 @@ public abstract class MixinFullscreen extends JmUI {
         flamechunk$scanButton.setMessage(new ChatComponentText(MapOverlayControls.scanMenuLabel()));
         flamechunk$scanButton.setEnabled(scanning || !pending);
         flamechunk$scanButtonState = state;
+    }
+
+    @Unique
+    private int flamechunk$screenHeight() {
+        GuiScreen screen = Minecraft.getMinecraft().currentScreen;
+        return screen == null ? 0 : screen.height;
     }
 }

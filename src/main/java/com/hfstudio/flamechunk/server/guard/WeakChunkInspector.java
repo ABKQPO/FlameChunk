@@ -67,6 +67,7 @@ public class WeakChunkInspector {
         }
         if (!ServerConfig.weakChunkDiagnostics) {
             clearStates();
+            clearPendingSnapshotRequests();
             return;
         }
         World world = event.world;
@@ -97,9 +98,14 @@ public class WeakChunkInspector {
     }
 
     public void onServerStopping(FMLServerStoppingEvent event) {
-        snapshotRequests.clear();
-        snapshotRequestCount.set(0);
+        clearPendingSnapshotRequests();
         clearStates();
+    }
+
+    private void clearPendingSnapshotRequests() {
+        while (snapshotRequests.poll() != null) {
+            snapshotRequestCount.decrementAndGet();
+        }
     }
 
     @SubscribeEvent
