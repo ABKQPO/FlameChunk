@@ -10,13 +10,12 @@ import net.minecraft.util.StatCollector;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.integration.XaeroOverlayRenderer;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
@@ -27,35 +26,32 @@ import xaero.map.gui.RightClickOption;
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class MixinGuiMap {
 
-    @Unique
-    private static final int FLAMECHUNK_SCAN_BUTTON = 0x465301;
-    @Unique
-    private static final int FLAMECHUNK_CLEAR_BUTTON = 0x465302;
-
     @Shadow(remap = false)
     private double cameraX;
+
     @Shadow(remap = false)
     private double cameraZ;
+
     @Shadow(remap = false)
     private double scale;
 
     @Shadow(remap = false)
+    private Integer lastViewedDimensionId;
+
+    @Shadow(remap = false)
+    private int rightClickX;
+
+    @Shadow(remap = false)
+    private int rightClickZ;
+
+    @Shadow(remap = false)
     public abstract void addGuiButton(GuiButton b);
-
-    @Accessor(value = "rightClickX", remap = false)
-    public abstract int flamechunk$getRightClickX();
-
-    @Accessor(value = "rightClickZ", remap = false)
-    public abstract int flamechunk$getRightClickZ();
-
-    @Accessor(value = "lastViewedDimensionId", remap = false)
-    public abstract Integer flamechunk$getLastViewedDimensionId();
 
     @Inject(method = "initGui", at = @At("RETURN"), remap = true)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
         addGuiButton(
             new GuiButton(
-                FLAMECHUNK_SCAN_BUTTON,
+                MapControlIds.XAERO_SCAN,
                 4,
                 4,
                 80,
@@ -63,7 +59,7 @@ public abstract class MixinGuiMap {
                 StatCollector.translateToLocal("flamechunk.client.scan")));
         addGuiButton(
             new GuiButton(
-                FLAMECHUNK_CLEAR_BUTTON,
+                MapControlIds.XAERO_CLEAR,
                 86,
                 4,
                 80,
@@ -76,9 +72,9 @@ public abstract class MixinGuiMap {
         if (button == null) {
             return;
         }
-        if (button.id == FLAMECHUNK_SCAN_BUTTON) {
+        if (button.id == MapControlIds.XAERO_SCAN) {
             MapOverlayControls.requestScan();
-        } else if (button.id == FLAMECHUNK_CLEAR_BUTTON) {
+        } else if (button.id == MapControlIds.XAERO_CLEAR) {
             MapOverlayControls.clear();
         }
     }
@@ -92,22 +88,29 @@ public abstract class MixinGuiMap {
 
     @Inject(method = "getRightClickOptions", at = @At("RETURN"), remap = false)
     private void flamechunk$addContextActions(CallbackInfoReturnable<ArrayList<RightClickOption>> callbackInfo) {
+
         if (callbackInfo.getReturnValue() == null || Minecraft.getMinecraft().theWorld == null) {
             return;
         }
+
         GuiMap map = (GuiMap) (Object) this;
         if (!map.isRightClickValid()) {
             return;
         }
+
         int dimensionId = Minecraft.getMinecraft().theWorld.provider.dimensionId;
-        Integer viewedDimensionId = flamechunk$getLastViewedDimensionId();
+        Integer viewedDimensionId = lastViewedDimensionId;
+
         if (viewedDimensionId == null || viewedDimensionId != dimensionId) {
             return;
         }
-        int chunkX = flamechunk$getRightClickX() >> 4;
-        int chunkZ = flamechunk$getRightClickZ() >> 4;
+
+        int chunkX = rightClickX >> 4;
+        int chunkZ = rightClickZ >> 4;
+
         ArrayList<RightClickOption> options = callbackInfo.getReturnValue();
         List<EntityTypeCount> types = MapOverlayControls.weakClearTargets(dimensionId, chunkX, chunkZ);
+
         for (final EntityTypeCount type : types) {
             options.add(new RightClickOption("flamechunk.client.map.weakclear.type", options.size(), map) {
 
@@ -117,6 +120,7 @@ public abstract class MixinGuiMap {
                 }
             }.setNameFormatArgs(type.getTypeId(), type.getCount()));
         }
+
         if (MapOverlayControls.hasLoaderControlTarget(dimensionId, chunkX, chunkZ)) {
             options.add(new RightClickOption("flamechunk.client.map.loader.toggle", options.size(), map) {
 

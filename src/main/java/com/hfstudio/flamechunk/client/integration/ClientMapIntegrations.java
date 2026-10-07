@@ -20,7 +20,7 @@ public class ClientMapIntegrations {
         for (MapOverlaySink integration : MapOverlayApi.registeredIntegrations()) {
             register(integration);
         }
-        if (Mods.JourneyMap6.isModLoaded() && Mods.JourneyMapApi.isModLoaded()) {
+        if (Mods.JourneyMap6.isModLoaded()) {
             try {
                 sinks.add(JourneyMap6Adapter.createBridge());
                 FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");

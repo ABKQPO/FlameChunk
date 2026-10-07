@@ -78,7 +78,7 @@ public abstract class MixinWorldServer {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;onBlockEventReceived(Lnet/minecraft/world/World;IIIII)Z"))
-    public boolean flamechunk$measureBlockEvent(Block block, World world, int x, int y, int z, int eventId,
+    private boolean flamechunk$measureBlockEvent(Block block, World world, int x, int y, int z, int eventId,
         int eventData) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0
@@ -107,7 +107,7 @@ public abstract class MixinWorldServer {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/SpawnerAnimals;findChunksForSpawning(Lnet/minecraft/world/WorldServer;ZZZ)I"))
-    public int flamechunk$measureMobSpawning(SpawnerAnimals spawner, WorldServer world, boolean hostile,
+    private int flamechunk$measureMobSpawning(SpawnerAnimals spawner, WorldServer world, boolean hostile,
         boolean peaceful, boolean animals) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0

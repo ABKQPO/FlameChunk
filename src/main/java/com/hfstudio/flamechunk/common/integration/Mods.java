@@ -75,7 +75,7 @@ public enum Mods implements IMod, ITargetMod {
     }
 
     public static boolean hasMapIntegration() {
-        return JourneyMap5.isModLoaded() || JourneyMap6.isModLoaded() && JourneyMapApi.isModLoaded()
+        return JourneyMap5.isModLoaded() || JourneyMap6.isModLoaded()
             || XaeroWorldMap.isModLoaded()
             || XaeroMinimap.isModLoaded();
     }
@@ -99,7 +99,7 @@ public enum Mods implements IMod, ITargetMod {
     }
 
     public static boolean isJourneyMap6() {
-        return hasJourneyMapVersion("6.");
+        return JourneyMapApi.isModLoaded() && hasJourneyMapVersion("6.");
     }
 
     public static boolean hasJourneyMapVersion(String prefix) {

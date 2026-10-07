@@ -4,13 +4,13 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.util.StatCollector;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.hfstudio.flamechunk.client.integration.JourneyMap5OverlayRenderer;
+import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 
 import journeymap.client.render.map.GridRenderer;
@@ -19,18 +19,13 @@ import journeymap.client.ui.fullscreen.Fullscreen;
 @Mixin(value = Fullscreen.class, remap = false)
 public abstract class MixinFullscreen {
 
-    @Unique
-    private static final int FLAMECHUNK_SCAN_BUTTON = 0x465311;
-    @Unique
-    private static final int FLAMECHUNK_CLEAR_BUTTON = 0x465312;
-
     @Inject(method = "initGui", at = @At("RETURN"), remap = true)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
         Fullscreen screen = (Fullscreen) (Object) this;
         screen.getButtonList()
             .add(
                 new GuiButton(
-                    FLAMECHUNK_SCAN_BUTTON,
+                    MapControlIds.JOURNEYMAP_SCAN,
                     6,
                     screen.height - 24,
                     76,
@@ -39,7 +34,7 @@ public abstract class MixinFullscreen {
         screen.getButtonList()
             .add(
                 new GuiButton(
-                    FLAMECHUNK_CLEAR_BUTTON,
+                    MapControlIds.JOURNEYMAP_CLEAR,
                     86,
                     screen.height - 24,
                     76,
@@ -52,9 +47,9 @@ public abstract class MixinFullscreen {
         if (guibutton == null) {
             return;
         }
-        if (guibutton.id == FLAMECHUNK_SCAN_BUTTON) {
+        if (guibutton.id == MapControlIds.JOURNEYMAP_SCAN) {
             MapOverlayControls.requestScan();
-        } else if (guibutton.id == FLAMECHUNK_CLEAR_BUTTON) {
+        } else if (guibutton.id == MapControlIds.JOURNEYMAP_CLEAR) {
             MapOverlayControls.clear();
         }
     }

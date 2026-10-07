@@ -11,7 +11,7 @@ import com.hfstudio.flamechunk.client.integration.XaeroOverlayRenderer;
 import xaero.common.minimap.MinimapProcessor;
 
 @Mixin(value = MinimapProcessor.class, remap = false)
-public class MixinMinimapProcessor {
+public abstract class MixinMinimapProcessor {
 
     @Shadow(remap = false)
     private double minimapZoom;
