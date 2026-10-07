@@ -10,7 +10,8 @@ public enum TickCategory {
     BLOCK_UPDATE,
     BLOCK_EVENT,
     HANDLER,
-    GARBAGE_COLLECTION;
+    GARBAGE_COLLECTION,
+    TASK;
 
     public static final int COUNT = values().length;
 

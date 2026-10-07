@@ -11,8 +11,8 @@ import net.minecraft.util.StatCollector;
 import org.lwjgl.input.Mouse;
 
 import com.hfstudio.flamechunk.client.config.ClientConfig;
-import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.config.ReportOutputMode;
+import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 

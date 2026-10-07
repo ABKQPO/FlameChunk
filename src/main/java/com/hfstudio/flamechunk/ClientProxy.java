@@ -34,16 +34,16 @@ import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.SnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.WeakChunkSnapshotPacket;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
-import cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
 
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.network.FMLNetworkEvent.ClientDisconnectionFromServerEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent.ClientConnectedToServerEvent;
+import cpw.mods.fml.common.network.FMLNetworkEvent.ClientDisconnectionFromServerEvent;
 import lombok.Getter;
 
 public class ClientProxy extends CommonProxy {
@@ -157,7 +157,8 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onClientConnect(ClientConnectedToServerEvent event) {
-        Minecraft.getMinecraft().func_152344_a(() -> MapOverlayControls.setConnection(event.manager, event.isLocal));
+        Minecraft.getMinecraft()
+            .func_152344_a(() -> MapOverlayControls.setConnection(event.manager, event.isLocal));
     }
 
     @SubscribeEvent
@@ -169,12 +170,13 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onClientDisconnect(ClientDisconnectionFromServerEvent event) {
-        Minecraft.getMinecraft().func_152344_a(() -> {
-            if (MapOverlayControls.connection == event.manager) {
-                MapOverlayControls.setConnection(null, false);
-                clearClientState();
-            }
-        });
+        Minecraft.getMinecraft()
+            .func_152344_a(() -> {
+                if (MapOverlayControls.connection == event.manager) {
+                    MapOverlayControls.setConnection(null, false);
+                    clearClientState();
+                }
+            });
     }
 
     @SubscribeEvent

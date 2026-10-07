@@ -48,13 +48,13 @@ public abstract class MixinFullscreen {
     }
 
     @Inject(method = "actionPerformed", at = @At("HEAD"), remap = true)
-    private void flamechunk$handleControl(GuiButton button, CallbackInfo callbackInfo) {
-        if (button == null) {
+    private void flamechunk$handleControl(GuiButton guibutton, CallbackInfo callbackInfo) {
+        if (guibutton == null) {
             return;
         }
-        if (button.id == FLAMECHUNK_SCAN_BUTTON) {
+        if (guibutton.id == FLAMECHUNK_SCAN_BUTTON) {
             MapOverlayControls.requestScan();
-        } else if (button.id == FLAMECHUNK_CLEAR_BUTTON) {
+        } else if (guibutton.id == FLAMECHUNK_CLEAR_BUTTON) {
             MapOverlayControls.clear();
         }
     }
@@ -62,9 +62,9 @@ public abstract class MixinFullscreen {
     @Redirect(
         method = "drawMap",
         at = @At(value = "INVOKE", target = "Ljourneymap/client/render/map/GridRenderer;draw(FDDZ)V"))
-    public void flamechunk$renderHeatmap(GridRenderer renderer, float alpha, double offsetX, double offsetY,
+    public void flamechunk$renderHeatmap(GridRenderer renderer, float alpha, double offsetX, double offsetZ,
         boolean showGrid) {
-        renderer.draw(alpha, offsetX, offsetY, showGrid);
-        JourneyMap5OverlayRenderer.render(renderer, offsetX, offsetY);
+        renderer.draw(alpha, offsetX, offsetZ, showGrid);
+        JourneyMap5OverlayRenderer.render(renderer, offsetX, offsetZ);
     }
 }

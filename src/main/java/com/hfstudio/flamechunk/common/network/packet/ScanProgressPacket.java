@@ -76,7 +76,6 @@ public class ScanProgressPacket implements IMessage {
     }
 
     public static boolean isNetworkStatus(int value) {
-        return value >= QUEUED && value <= WEAK_SCAN_DISABLED
-            || value >= SUBSCRIBED && value <= SUBSCRIPTION_DENIED;
+        return value >= QUEUED && value <= WEAK_SCAN_DISABLED || value >= SUBSCRIBED && value <= SUBSCRIPTION_DENIED;
     }
 }

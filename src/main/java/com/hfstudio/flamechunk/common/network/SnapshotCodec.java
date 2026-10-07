@@ -14,13 +14,15 @@ import com.hfstudio.flamechunk.common.data.ChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
 import com.hfstudio.flamechunk.common.data.ObjectHotspot;
+import com.hfstudio.flamechunk.common.data.ObservationSnapshot;
+import com.hfstudio.flamechunk.common.data.ObservationSnapshot.Entry;
 import com.hfstudio.flamechunk.common.data.ScanLimits;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 9;
+    private static final int CODEC_VERSION = 10;
     public static final TickCategory[] CATEGORIES = TickCategory.values();
 
     public byte[] encode(ScanSnapshot snapshot) {
@@ -36,6 +38,7 @@ public class SnapshotCodec {
             validateScanWindow(duration, ticks);
             output.writeInt(duration);
             output.writeLong(ticks);
+            writeObservations(output, snapshot.observations);
             DimensionSnapshot[] dimensions = snapshot.getDimensions();
             checkCount(dimensions.length, ServerConfig.maxDimensions, "dimension");
             output.writeInt(dimensions.length);
@@ -93,6 +96,7 @@ public class SnapshotCodec {
             int duration = input.readInt();
             long ticks = input.readLong();
             validateScanWindow(duration, ticks);
+            ObservationSnapshot observations = readObservations(input);
             int dimensionCount = readCount(input, ServerConfig.maxDimensions, "dimension");
             DimensionSnapshot[] dimensions = new DimensionSnapshot[dimensionCount];
             for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++) {
@@ -139,12 +143,64 @@ public class SnapshotCodec {
             if (input.available() != 0) {
                 throw new IllegalArgumentException("Trailing snapshot data");
             }
-            return new ScanSnapshot(duration, ticks, dimensions);
+            return new ScanSnapshot(duration, ticks, dimensions, observations);
         } catch (EOFException exception) {
             throw new IllegalArgumentException("Truncated snapshot", exception);
         } catch (IOException exception) {
             throw new IllegalArgumentException("Unable to decode snapshot", exception);
         }
+    }
+
+    public static void writeObservations(DataOutputStream output, ObservationSnapshot snapshot) throws IOException {
+        output.writeLong(snapshot.tickNanos());
+        output.writeLong(snapshot.peakTickNanos());
+        output.writeLong(snapshot.completedTicks());
+        output.writeLong(snapshot.sampleAttempts());
+        output.writeLong(snapshot.consistentSamples());
+        output.writeLong(snapshot.discardedSamples());
+        output.writeInt(snapshot.intervalMicros());
+        output.writeUTF(snapshot.degradationReason());
+        output.writeInt(
+            snapshot.entries()
+                .size());
+        for (Entry entry : snapshot.entries()) {
+            output.writeByte(
+                entry.category()
+                    .ordinal());
+            output.writeInt(entry.dimensionId());
+            output.writeUTF(entry.typeName());
+            output.writeLong(entry.nanos());
+            output.writeLong(entry.peakNanos());
+            output.writeLong(entry.samples());
+        }
+    }
+
+    public static ObservationSnapshot readObservations(DataInputStream input) throws IOException {
+        long nanos = input.readLong();
+        long peak = input.readLong();
+        long ticks = input.readLong();
+        long attempts = input.readLong();
+        long consistent = input.readLong();
+        long discarded = input.readLong();
+        int interval = input.readInt();
+        String reason = input.readUTF();
+        int count = readCount(input, ObservationSnapshot.MAX_ENTRIES, "observation entry");
+        List<Entry> entries = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            int category = input.readUnsignedByte();
+            if (category >= CATEGORIES.length) {
+                throw new IllegalArgumentException("Unknown observation category");
+            }
+            entries.add(
+                new Entry(
+                    CATEGORIES[category],
+                    input.readInt(),
+                    input.readUTF(),
+                    input.readLong(),
+                    input.readLong(),
+                    input.readLong()));
+        }
+        return new ObservationSnapshot(nanos, peak, ticks, attempts, consistent, discarded, interval, reason, entries);
     }
 
     private static void writeLongs(DataOutputStream output, long[] values) throws IOException {

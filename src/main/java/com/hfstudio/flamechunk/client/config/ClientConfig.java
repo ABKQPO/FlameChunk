@@ -153,6 +153,8 @@ public class ClientConfig {
         public boolean handler = true;
         @Config.DefaultBoolean(true)
         public boolean garbageCollection = true;
+        @Config.DefaultBoolean(true)
+        public boolean task = true;
 
         public boolean contains(TickCategory category) {
             return switch (category) {
@@ -165,6 +167,7 @@ public class ClientConfig {
                 case BLOCK_EVENT -> blockEvent;
                 case HANDLER -> handler;
                 case GARBAGE_COLLECTION -> garbageCollection;
+                case TASK -> task;
             };
         }
 
@@ -179,6 +182,7 @@ public class ClientConfig {
                 case BLOCK_EVENT -> blockEvent = !blockEvent;
                 case HANDLER -> handler = !handler;
                 case GARBAGE_COLLECTION -> garbageCollection = !garbageCollection;
+                case TASK -> task = !task;
             }
         }
     }

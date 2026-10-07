@@ -1,6 +1,7 @@
 package com.hfstudio.flamechunk.server.sampler;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import net.minecraft.nbt.NBTTagCompound;
@@ -74,10 +75,9 @@ public class LoaderControlData extends WorldSavedData {
         for (long key : frozenChunks) {
             chunks.add(new ChunkCoordIntPair((int) key, (int) (key >> 32)));
         }
-        chunks.sort((left, right) -> {
-            int xOrder = Integer.compare(left.chunkXPos, right.chunkXPos);
-            return xOrder != 0 ? xOrder : Integer.compare(left.chunkZPos, right.chunkZPos);
-        });
+        chunks.sort(
+            Comparator.comparingInt((ChunkCoordIntPair left) -> left.chunkXPos)
+                .thenComparingInt(left -> left.chunkZPos));
         return chunks;
     }
 

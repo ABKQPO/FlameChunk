@@ -19,11 +19,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
 import com.hfstudio.flamechunk.FlameChunk;
-import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.network.packet.WeakChunkSnapshotPacket;
 import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 

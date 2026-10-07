@@ -6,13 +6,14 @@ import java.util.List;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
 import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
+import com.hfstudio.flamechunk.server.command.ServerMessages;
 import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -118,16 +119,17 @@ public class EntityLoadGuard {
             removed,
             "players and unselected entity types were preserved");
         if (removed > 0 && ServerConfig.entityProtectionBroadcast) {
-            ChatComponentTranslation message = new ChatComponentTranslation(
-                "flamechunk.entity.protection.broadcast",
-                chunk.worldObj.provider.dimensionId,
-                chunk.xPosition,
-                chunk.zPosition,
-                removed);
             MinecraftServer server = MinecraftServer.getServer();
             if (server != null && server.getConfigurationManager() != null) {
-                server.getConfigurationManager()
-                    .sendChatMsg(message);
+                for (EntityPlayerMP player : server.getConfigurationManager().playerEntityList) {
+                    ServerMessages.send(
+                        player,
+                        "flamechunk.entity.protection.broadcast",
+                        chunk.worldObj.provider.dimensionId,
+                        chunk.xPosition,
+                        chunk.zPosition,
+                        removed);
+                }
             }
         }
     }

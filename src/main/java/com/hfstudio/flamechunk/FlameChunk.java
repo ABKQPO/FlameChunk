@@ -65,7 +65,9 @@ public class FlameChunk {
         }
         network = NetworkRegistry.INSTANCE.newSimpleChannel(MODID);
         NetworkHandler.register(network);
-        FMLCommonHandler.instance().bus().register(new PeerChannels());
+        FMLCommonHandler.instance()
+            .bus()
+            .register(new PeerChannels());
         serverUtilities = ServerUtilitiesBridge.create();
         sampler = new PerformanceSampler(serverUtilities);
         entityLoadGuard = new EntityLoadGuard(serverUtilities);

@@ -21,6 +21,8 @@ public class ObjectHotspotStore {
     public static final int REPORT_OBJECT_LIMIT = 128;
     public final Int2ObjectOpenHashMap<Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>>> dimensions = new Int2ObjectOpenHashMap<>();
     public int size;
+    public final Aggregate[] admissionHeap = new Aggregate[MAX_TRACKED_OBJECTS];
+    public long replacements;
 
     public void record(int dimensionId, TickCategory category, String typeName, int entityId, long identityMost,
         long identityLeast, int x, int y, int z, long elapsedNanos) {
@@ -39,36 +41,46 @@ public class ObjectHotspotStore {
         if (typeName.length() > ChunkTypeTiming.MAX_TYPE_NAME_LENGTH) {
             typeName = typeName.substring(0, ChunkTypeTiming.MAX_TYPE_NAME_LENGTH);
         }
-        Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>> categories = dimensions.get(dimensionId);
-        if (categories == null) {
-            if (size >= MAX_TRACKED_OBJECTS) {
-                return;
-            }
-            categories = new EnumMap<>(TickCategory.class);
-            dimensions.put(dimensionId, categories);
-        }
-        Long2ObjectOpenHashMap<Aggregate> objects = categories.get(category);
-        if (objects == null) {
-            if (size >= MAX_TRACKED_OBJECTS) {
-                return;
-            }
-            objects = new Long2ObjectOpenHashMap<>();
-            categories.put(category, objects);
-        }
         long key = category == TickCategory.ENTITY ? entityId : ObjectHotspot.blockKey(x, y, z);
-        Aggregate aggregate = objects.get(key);
+        Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>> categories = dimensions.get(dimensionId);
+        Long2ObjectOpenHashMap<Aggregate> objects = categories == null ? null : categories.get(category);
+        Aggregate aggregate = objects == null ? null : objects.get(key);
         if (aggregate == null) {
-            if (size >= MAX_TRACKED_OBJECTS) {
-                return;
+            long inheritedWeight = 0;
+            if (size == MAX_TRACKED_OBJECTS) {
+                aggregate = admissionHeap[0];
+                inheritedWeight = aggregate.admissionWeight;
+                Map<TickCategory, Long2ObjectOpenHashMap<Aggregate>> previousCategories = dimensions
+                    .get(aggregate.dimensionId);
+                Long2ObjectOpenHashMap<Aggregate> previousObjects = previousCategories.get(aggregate.category);
+                previousObjects.remove(aggregate.key);
+                if (previousObjects.isEmpty()) {
+                    previousCategories.remove(aggregate.category);
+                    if (previousCategories.isEmpty()) {
+                        dimensions.remove(aggregate.dimensionId);
+                    }
+                }
+                replacements++;
+            } else {
+                aggregate = new Aggregate();
+                aggregate.heapIndex = size;
+                admissionHeap[size++] = aggregate;
             }
-            aggregate = new Aggregate();
+            categories = dimensions.computeIfAbsent(dimensionId, ignored -> new EnumMap<>(TickCategory.class));
+            objects = categories.computeIfAbsent(category, ignored -> new Long2ObjectOpenHashMap<>());
             objects.put(key, aggregate);
-            size++;
+            aggregate.dimensionId = dimensionId;
+            aggregate.key = key;
+            aggregate.nanos = 0;
+            aggregate.peakNanos = 0;
+            aggregate.count = 0;
+            aggregate.admissionWeight = inheritedWeight;
         } else if (aggregate.identityMost != identityMost || aggregate.identityLeast != identityLeast
             || !aggregate.typeName.equals(typeName)) {
                 aggregate.nanos = 0L;
                 aggregate.peakNanos = 0L;
                 aggregate.count = 0;
+                aggregate.admissionWeight = 0;
             }
         aggregate.typeName = typeName;
         aggregate.category = category;
@@ -84,6 +96,37 @@ public class ObjectHotspotStore {
         if (aggregate.count < Integer.MAX_VALUE) {
             aggregate.count++;
         }
+        // Inherited weights guide admission only; reports contain directly observed timings.
+        aggregate.admissionWeight = Long.MAX_VALUE - aggregate.admissionWeight < elapsedNanos ? Long.MAX_VALUE
+            : aggregate.admissionWeight + elapsedNanos;
+        updateAdmission(aggregate);
+    }
+
+    public void updateAdmission(Aggregate aggregate) {
+        int index = aggregate.heapIndex;
+        while (index > 0) {
+            int parent = (index - 1) / 2;
+            if (admissionHeap[parent].admissionWeight <= aggregate.admissionWeight) {
+                break;
+            }
+            admissionHeap[index] = admissionHeap[parent];
+            admissionHeap[index].heapIndex = index;
+            index = parent;
+        }
+        while (index * 2 + 1 < size) {
+            int child = index * 2 + 1;
+            if (child + 1 < size && admissionHeap[child + 1].admissionWeight < admissionHeap[child].admissionWeight) {
+                child++;
+            }
+            if (admissionHeap[child].admissionWeight >= aggregate.admissionWeight) {
+                break;
+            }
+            admissionHeap[index] = admissionHeap[child];
+            admissionHeap[index].heapIndex = index;
+            index = child;
+        }
+        admissionHeap[index] = aggregate;
+        aggregate.heapIndex = index;
     }
 
     public List<ObjectHotspot> snapshot(int dimensionId) {
@@ -126,7 +169,11 @@ public class ObjectHotspotStore {
 
     public void clear() {
         dimensions.clear();
+        for (int index = 0; index < size; index++) {
+            admissionHeap[index] = null;
+        }
         size = 0;
+        replacements = 0;
     }
 
     public List<ObjectHotspot> snapshotNear(int dimensionId, double x, double y, double z, int radius, int limit) {
@@ -165,8 +212,19 @@ public class ObjectHotspotStore {
         ranked.sort(bestFirst);
         List<ObjectHotspot> result = new ArrayList<>(ranked.size());
         for (Aggregate value : ranked) {
-            result.add(new ObjectHotspot(value.category, value.typeName, value.entityId, value.identityMost,
-                value.identityLeast, value.x, value.y, value.z, value.nanos, value.peakNanos, value.count));
+            result.add(
+                new ObjectHotspot(
+                    value.category,
+                    value.typeName,
+                    value.entityId,
+                    value.identityMost,
+                    value.identityLeast,
+                    value.x,
+                    value.y,
+                    value.z,
+                    value.nanos,
+                    value.peakNanos,
+                    value.count));
         }
         return result;
     }
@@ -179,6 +237,11 @@ public class ObjectHotspotStore {
     }
 
     public static class Aggregate {
+
+        public int dimensionId;
+        public long key;
+        public int heapIndex;
+        public long admissionWeight;
 
         public TickCategory category;
         public String typeName;

@@ -2,19 +2,19 @@ package com.hfstudio.flamechunk.server.sampler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Iterator;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.NetHandlerPlayServer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.server.MinecraftServer;
 
+import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
-import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 
 public class SnapshotSubscriptions {
@@ -61,7 +61,8 @@ public class SnapshotSubscriptions {
         }
         MinecraftServer server = MinecraftServer.getServer();
         if (server != null && server.isSinglePlayer()
-            && player.getCommandSenderName().equals(server.getServerOwner())) {
+            && player.getCommandSenderName()
+                .equals(server.getServerOwner())) {
             return true;
         }
         if (ServerConfig.allowNonOperatorSubscriptions) {
@@ -78,7 +79,8 @@ public class SnapshotSubscriptions {
 
     public boolean contains(EntityPlayerMP player) {
         return player != null && player.playerNetServerHandler != null
-            && subscribers.containsKey(player.playerNetServerHandler.netManager) && canSubscribe(player);
+            && subscribers.containsKey(player.playerNetServerHandler.netManager)
+            && canSubscribe(player);
     }
 
     public void remove(EntityPlayerMP player) {
@@ -88,15 +90,16 @@ public class SnapshotSubscriptions {
     }
 
     public void prune() {
-        Iterator<Subscription> iterator = subscribers.values().iterator();
+        Iterator<Subscription> iterator = subscribers.values()
+            .iterator();
         while (iterator.hasNext()) {
             Subscription subscription = iterator.next();
             EntityPlayerMP player = subscription.player();
             if (!canSubscribe(player)) {
                 iterator.remove();
                 if (PeerChannels.canSend(player)) {
-                    FlameChunk.network.sendTo(
-                        ScanProgressPacket.forStatus(ScanProgressPacket.SUBSCRIPTION_DENIED), player);
+                    FlameChunk.network
+                        .sendTo(ScanProgressPacket.forStatus(ScanProgressPacket.SUBSCRIPTION_DENIED), player);
                 }
             }
         }
@@ -128,7 +131,8 @@ public class SnapshotSubscriptions {
 
         public EntityPlayerMP player() {
             return manager != null && manager.getNetHandler() instanceof NetHandlerPlayServer handler
-                ? handler.playerEntity : null;
+                ? handler.playerEntity
+                : null;
         }
     }
 }

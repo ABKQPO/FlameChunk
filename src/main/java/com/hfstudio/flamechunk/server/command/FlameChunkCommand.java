@@ -259,11 +259,13 @@ public class FlameChunkCommand extends CommandBase {
             World world = sender.getEntityWorld();
             if ("list".equalsIgnoreCase(args[2])) {
                 List<ChunkCoordIntPair> frozen = LoaderTicketControlService.frozenChunks(world);
-                sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.list", frozen.size()));
+                sender
+                    .addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.list", frozen.size()));
                 for (int index = 0; index < frozen.size() && index < 100; index++) {
                     ChunkCoordIntPair chunk = frozen.get(index);
                     sender.addChatMessage(
-                        ServerMessages.translated(sender,
+                        ServerMessages.translated(
+                            sender,
                             "flamechunk.command.loader.entry",
                             world.provider.dimensionId,
                             chunk.chunkXPos,
@@ -273,7 +275,8 @@ public class FlameChunkCommand extends CommandBase {
             }
             if ("clear-orphans".equalsIgnoreCase(args[2])) {
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.loader.orphans",
                         LoaderTicketControlService.clearOrphans(world)));
                 return;
@@ -299,8 +302,8 @@ public class FlameChunkCommand extends CommandBase {
             if (affected < 0) {
                 sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.limit"));
             } else if (affected == 0) {
-                sender
-                    .addChatMessage(ServerMessages.translated(sender, "flamechunk.command.loader.missing", chunkX, chunkZ));
+                sender.addChatMessage(
+                    ServerMessages.translated(sender, "flamechunk.command.loader.missing", chunkX, chunkZ));
             } else {
                 sender.addChatMessage(
                     ServerMessages.translated(sender, "flamechunk.command.loader.frozen", chunkX, chunkZ, affected));

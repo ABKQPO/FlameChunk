@@ -16,6 +16,11 @@ public class ServerConfig {
     @Config.RangeInt(min = ScanLimits.MIN_SECONDS, max = ScanLimits.MAX_SECONDS)
     public static int scanSeconds = 2;
 
+    @Config.Comment("Interval between independent server work observations in microseconds")
+    @Config.DefaultInt(1000)
+    @Config.RangeInt(min = 1000, max = 100000)
+    public static int sampleIntervalMicros = 1000;
+
     @Config.Comment("Maximum chunks retained per dimension")
     @Config.DefaultInt(4096)
     @Config.RangeInt(min = 256, max = 32768)

@@ -29,6 +29,9 @@ public abstract class MixinWorld {
             target = "Lnet/minecraft/block/Block;onNeighborBlockChange(Lnet/minecraft/world/World;IIILnet/minecraft/block/Block;)V"))
     public void flamechunk$measureNeighborUpdate(Block block, World world, int x, int y, int z, Block neighbor) {
         long start = world == null || world.isRemote ? 0L : PerformanceSampler.beginTiming();
+        int work = start == 0 ? 0
+            : PerformanceSampler
+                .enterWork(TickCategory.BLOCK_UPDATE, world, PerformanceSampler.workTypeName(block.getClass()));
         Deque<Long> starts = null;
         if (start != 0L) {
             starts = flamechunk$neighborStarts.get();
@@ -41,6 +44,7 @@ public abstract class MixinWorld {
         try {
             block.onNeighborBlockChange(world, x, y, z, neighbor);
         } finally {
+            PerformanceSampler.leaveWork(work);
             if (starts != null) {
                 long outerStart = starts.pop();
                 if (starts.isEmpty()) {
@@ -65,12 +69,16 @@ public abstract class MixinWorld {
         method = "updateEntities",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/tileentity/TileEntity;updateEntity()V"))
     public void flamechunk$measureTileEntity(TileEntity tileEntity) {
+        World world = (World) (Object) this;
         long start = PerformanceSampler.beginTiming();
+        int work = start == 0 ? 0
+            : PerformanceSampler
+                .enterWork(TickCategory.BLOCK_ENTITY, world, PerformanceSampler.workTypeName(tileEntity.getClass()));
         try {
             tileEntity.updateEntity();
         } finally {
+            PerformanceSampler.leaveWork(work);
             if (start != 0L) {
-                World world = (World) (Object) this;
                 PerformanceSampler.recordTileEntityTiming(world, tileEntity, System.nanoTime() - start);
             }
         }
@@ -81,12 +89,46 @@ public abstract class MixinWorld {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/World;updateEntity(Lnet/minecraft/entity/Entity;)V"))
     public void flamechunk$measureEntity(World world, Entity entity) {
         long start = PerformanceSampler.beginTiming();
+        int work = start == 0 ? 0
+            : PerformanceSampler.enterWork(
+                TickCategory.ENTITY,
+                world,
+                PerformanceSampler.workTypeName(entity == null ? null : entity.getClass()));
         try {
             world.updateEntity(entity);
         } finally {
+            PerformanceSampler.leaveWork(work);
             if (start != 0L && entity != null) {
                 PerformanceSampler.recordEntityTiming(world, entity, System.nanoTime() - start);
             }
+        }
+    }
+
+    @Redirect(
+        method = "updateEntityWithOptionalForce",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;onUpdate()V"))
+    public void flamechunk$observeEntityCallback(Entity entity) {
+        int work = !PerformanceSampler.isActive() ? 0
+            : PerformanceSampler
+                .enterWork(TickCategory.ENTITY, entity.worldObj, PerformanceSampler.workTypeName(entity.getClass()));
+        try {
+            entity.onUpdate();
+        } finally {
+            PerformanceSampler.leaveWork(work);
+        }
+    }
+
+    @Redirect(
+        method = "updateEntityWithOptionalForce",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;updateRidden()V"))
+    public void flamechunk$observePassengerCallback(Entity entity) {
+        int work = !PerformanceSampler.isActive() ? 0
+            : PerformanceSampler
+                .enterWork(TickCategory.ENTITY, entity.worldObj, PerformanceSampler.workTypeName(entity.getClass()));
+        try {
+            entity.updateRidden();
+        } finally {
+            PerformanceSampler.leaveWork(work);
         }
     }
 }

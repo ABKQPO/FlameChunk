@@ -91,6 +91,14 @@ public class DiagnosticScreen extends GuiScreen {
             .add(new GuiButton(7, 6, 30, 76, 20, StatCollector.translateToLocal("flamechunk.client.detail.back")));
         buttonList
             .add(new GuiButton(8, width - 90, 30, 84, 20, StatCollector.translateToLocal("flamechunk.client.objects")));
+        buttonList.add(
+            new GuiButton(
+                9,
+                6,
+                height - 28,
+                56,
+                20,
+                StatCollector.translateToLocal("flamechunk.client.observationButton")));
     }
 
     @Override
@@ -181,6 +189,8 @@ public class DiagnosticScreen extends GuiScreen {
             if (dimension != null) {
                 mc.displayGuiScreen(new ObjectHotspotScreen(this, dimension, snapshot.getSampledTicks()));
             }
+        } else if (button.id == 9 && storage.getSnapshot() != null) {
+            mc.displayGuiScreen(new PrimaryObservationScreen(this, storage.getSnapshot().observations));
         }
     }
 
@@ -208,6 +218,9 @@ public class DiagnosticScreen extends GuiScreen {
             buttonList.get(6).enabled = !showWeakChunks && expandedChunk == null;
             buttonList.get(7).enabled = !showWeakChunks && expandedChunk != null;
             buttonList.get(8).enabled = !showWeakChunks && dimension != null && !dimension.objectHotspots.isEmpty();
+            if (buttonList.size() > 9) {
+                buttonList.get(9).enabled = snapshot != null && snapshot.observations.completedTicks() > 0;
+            }
         }
     }
 

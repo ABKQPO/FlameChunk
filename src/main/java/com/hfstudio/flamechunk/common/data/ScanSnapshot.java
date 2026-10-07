@@ -9,14 +9,21 @@ public class ScanSnapshot {
     @Getter
     private final long sampledTicks;
     private final DimensionSnapshot[] dimensions;
+    public final ObservationSnapshot observations;
 
     public ScanSnapshot(int durationSeconds, long sampledTicks, DimensionSnapshot[] dimensions) {
-        if (durationSeconds < 0 || sampledTicks < 0L || dimensions == null) {
+        this(durationSeconds, sampledTicks, dimensions, ObservationSnapshot.EMPTY);
+    }
+
+    public ScanSnapshot(int durationSeconds, long sampledTicks, DimensionSnapshot[] dimensions,
+        ObservationSnapshot observations) {
+        if (durationSeconds < 0 || sampledTicks < 0L || dimensions == null || observations == null) {
             throw new IllegalArgumentException("Invalid scan snapshot values");
         }
         this.durationSeconds = durationSeconds;
         this.sampledTicks = sampledTicks;
         this.dimensions = dimensions.clone();
+        this.observations = observations;
     }
 
     public DimensionSnapshot[] getDimensions() {

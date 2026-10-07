@@ -11,13 +11,13 @@ import java.util.Set;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.event.world.WorldEvent;
 
 import com.hfstudio.flamechunk.FlameChunk;
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
+import com.hfstudio.flamechunk.server.command.ServerMessages;
 import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
@@ -131,11 +131,11 @@ public class WeakChunkClearService {
             : removedAny ? "flamechunk.command.weakclear.completed" : "flamechunk.command.weakclear.stale";
         if (job.player.playerNetServerHandler != null) {
             if (removedAny && !queueFull) {
-                job.player.addChatMessage(new ChatComponentTranslation(message, job.removed, job.typeId));
+                ServerMessages.send(job.player, message, job.removed, job.typeId);
             } else if (queueFull) {
-                job.player.addChatMessage(new ChatComponentTranslation(message));
+                ServerMessages.send(job.player, message);
             } else {
-                job.player.addChatMessage(new ChatComponentTranslation(message, 0, job.typeId));
+                ServerMessages.send(job.player, message, 0, job.typeId);
             }
         }
     }

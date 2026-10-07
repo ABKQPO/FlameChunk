@@ -3,16 +3,17 @@ package com.hfstudio.flamechunk.common.integration;
 import java.util.Locale;
 import java.util.function.Supplier;
 
+import net.minecraft.network.NetworkManager;
+
 import org.jetbrains.annotations.NotNull;
 
 import com.gtnewhorizon.gtnhlib.util.data.IMod;
 import com.gtnewhorizon.gtnhmixins.builders.ITargetMod;
 import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ModContainer;
-import net.minecraft.network.NetworkManager;
-import com.hfstudio.flamechunk.common.network.PeerChannels;
 
 public enum Mods implements IMod, ITargetMod {
 

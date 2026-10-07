@@ -12,8 +12,7 @@ import io.netty.util.AttributeKey;
 
 public class PeerChannels {
 
-    public static final AttributeKey<Boolean> FLAMECHUNK_AVAILABLE =
-        new AttributeKey<>("flamechunk:remote-channel");
+    public static final AttributeKey<Boolean> FLAMECHUNK_AVAILABLE = new AttributeKey<>("flamechunk:remote-channel");
 
     @SubscribeEvent
     public void onChannelRegistration(CustomPacketRegistrationEvent<?> event) {
@@ -31,13 +30,19 @@ public class PeerChannels {
 
     public static void setAvailable(NetworkManager manager, boolean available) {
         if (manager != null && manager.channel() != null) {
-            manager.channel().attr(FLAMECHUNK_AVAILABLE).set(available);
+            manager.channel()
+                .attr(FLAMECHUNK_AVAILABLE)
+                .set(available);
         }
     }
 
     public static boolean isAvailable(NetworkManager manager) {
-        return manager != null && manager.channel() != null && manager.isChannelOpen()
-            && Boolean.TRUE.equals(manager.channel().attr(FLAMECHUNK_AVAILABLE).get());
+        return manager != null && manager.channel() != null
+            && manager.isChannelOpen()
+            && Boolean.TRUE.equals(
+                manager.channel()
+                    .attr(FLAMECHUNK_AVAILABLE)
+                    .get());
     }
 
     public static boolean canSend(EntityPlayerMP player) {

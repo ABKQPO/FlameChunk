@@ -7,8 +7,8 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiYesNo;
-import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.network.NetworkManager;
+import net.minecraft.util.ChatComponentTranslation;
 
 import com.hfstudio.flamechunk.ClientProxy;
 import com.hfstudio.flamechunk.FlameChunk;
@@ -21,12 +21,12 @@ import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
+import com.hfstudio.flamechunk.common.integration.Mods;
+import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.MapContextActionPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
-import com.hfstudio.flamechunk.common.network.PeerChannels;
-import com.hfstudio.flamechunk.common.integration.Mods;
 
 public class MapOverlayControls {
 
@@ -64,8 +64,8 @@ public class MapOverlayControls {
             return;
         }
         if (requested != subscribed || requested && worldHotspots != subscribedWorldHotspots) {
-            FlameChunk.network.sendToServer(requested ? ScanRequestPacket.subscribeRequest(worldHotspots)
-                : ScanRequestPacket.unsubscribeRequest());
+            FlameChunk.network.sendToServer(
+                requested ? ScanRequestPacket.subscribeRequest(worldHotspots) : ScanRequestPacket.unsubscribeRequest());
             subscribed = requested;
             subscribedWorldHotspots = worldHotspots;
             nextSubscriptionAttemptNanos = System.nanoTime() + 1000000000L;

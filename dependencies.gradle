@@ -1,10 +1,10 @@
 dependencies {
     shadowImplementation("com.github.luben:zstd-jni:1.4.9-5")
+    shadowImplementation("net.java.dev.jna:jna:5.12.1")
 
     compileOnly("com.github.GTNewHorizons:ServerUtilities:2.4.14:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.4.14:dev")
 
-    compileOnly('com.github.GTNewHorizons:Navigator:1.1.8:dev') { transitive = false }
     compileOnly('info.journeymap:journeymap-api-forge:1.7.10-2.0.0')
     compileOnly(rfg.deobf('maven.modrinth:journeymap:5.2.20'))
     compileOnly(rfg.deobf('curse.maven:xaeros-minimap-263420:5637000'))

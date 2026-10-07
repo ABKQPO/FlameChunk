@@ -28,6 +28,10 @@ public abstract class MixinEventBus {
             value = "INVOKE",
             target = "Lcpw/mods/fml/common/eventhandler/IEventListener;invoke(Lcpw/mods/fml/common/eventhandler/Event;)V"))
     public void flamechunk$measureEventHandler(IEventListener listener, Event event) {
+        if (!PerformanceSampler.isActive()) {
+            listener.invoke(event);
+            return;
+        }
         World world = null;
         if (event instanceof WorldEvent worldEvent) {
             world = worldEvent.world;
@@ -38,12 +42,11 @@ public abstract class MixinEventBus {
             world = entity == null ? null : entity.worldObj;
         }
         long start = world == null || world.isRemote ? 0L : PerformanceSampler.beginTiming();
-        if (start == 0L) {
+        if (world != null && world.isRemote) {
             listener.invoke(event);
             return;
         }
-        String handlerName = listener.getClass()
-            .getSimpleName();
+        String handlerName = PerformanceSampler.workTypeName(listener.getClass());
         if (listener instanceof ASMEventHandlerAccessor accessor) {
             ModContainer owner = accessor.flamechunk$getOwner();
             if (owner != null && owner.getModId() != null
@@ -52,11 +55,15 @@ public abstract class MixinEventBus {
                 handlerName = owner.getModId();
             }
         }
+        int work = PerformanceSampler.enterWork(TickCategory.HANDLER, world, handlerName);
         try {
             listener.invoke(event);
         } finally {
-            PerformanceSampler
-                .recordGlobalObjectTiming(TickCategory.HANDLER, world, handlerName, System.nanoTime() - start);
+            PerformanceSampler.leaveWork(work);
+            if (start != 0) {
+                PerformanceSampler
+                    .recordGlobalObjectTiming(TickCategory.HANDLER, world, handlerName, System.nanoTime() - start);
+            }
         }
     }
 }

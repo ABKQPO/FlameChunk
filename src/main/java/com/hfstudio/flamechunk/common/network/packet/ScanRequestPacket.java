@@ -79,12 +79,13 @@ public class ScanRequestPacket implements IMessage {
                 seconds = value;
                 weakSnapshotRequest = true;
                 valid = true;
-            } else if (value == STOP_SCAN_REQUEST || value == SUBSCRIBE_REQUEST || value == UNSUBSCRIBE_REQUEST
+            } else if (value == STOP_SCAN_REQUEST || value == SUBSCRIBE_REQUEST
+                || value == UNSUBSCRIBE_REQUEST
                 || value == SUBSCRIBE_WORLD_REQUEST
                 || ScanLimits.isValidDuration(value)) {
-                seconds = value;
-                valid = true;
-            }
+                    seconds = value;
+                    valid = true;
+                }
         }
     }
 

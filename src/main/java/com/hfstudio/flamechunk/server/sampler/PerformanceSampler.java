@@ -25,17 +25,18 @@ import com.hfstudio.flamechunk.common.data.ChunkTiming;
 import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
 import com.hfstudio.flamechunk.common.data.ObjectHotspot;
+import com.hfstudio.flamechunk.common.data.ObservationSnapshot;
 import com.hfstudio.flamechunk.common.data.ScanLimits;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 import com.hfstudio.flamechunk.common.network.PeerChannels;
 import com.hfstudio.flamechunk.common.network.packet.ClearSnapshotPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanProgressPacket;
 import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
+import com.hfstudio.flamechunk.common.tick.TickCategory;
+import com.hfstudio.flamechunk.server.command.ServerMessages;
+import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 import com.hfstudio.flamechunk.server.sampler.SnapshotSubscriptions.Subscription;
 import com.hfstudio.flamechunk.server.sampler.SnapshotSubscriptions.Update;
-import com.hfstudio.flamechunk.common.tick.TickCategory;
-import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
-import com.hfstudio.flamechunk.server.command.ServerMessages;
 
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -70,6 +71,63 @@ public class PerformanceSampler {
     private int typeAggregateCount;
     private ScanSnapshot lastSnapshot;
     public long serverTicks;
+    public volatile PrimaryObservationSampler primarySampler;
+    public static volatile boolean serverTickInProgress;
+    public static final ClassValue<String> TYPE_NAMES = new ClassValue<>() {
+
+        @Override
+        public String computeValue(Class<?> type) {
+            String name = type.getSimpleName();
+            return name.isEmpty() ? type.getName() : name;
+        }
+    };
+
+    public static String workTypeName(Class<?> type) {
+        return type == null ? "Unknown" : TYPE_NAMES.get(type);
+    }
+
+    public static int enterWork(TickCategory category, World world, String typeName) {
+        PerformanceSampler sampler = activeSampler;
+        PrimaryObservationSampler primary = sampler == null ? null : sampler.primarySampler;
+        return primary == null || world != null && world.isRemote ? 0
+            : primary.tracker.enter(
+                category,
+                world == null ? WorkContextTracker.NO_DIMENSION : world.provider.dimensionId,
+                typeName);
+    }
+
+    public static void leaveWork(int token) {
+        PerformanceSampler sampler = activeSampler;
+        PrimaryObservationSampler primary = sampler == null ? null : sampler.primarySampler;
+        if (primary != null) {
+            primary.tracker.leave(token);
+        }
+    }
+
+    public static void beginServerWorkTick() {
+        serverTickInProgress = true;
+        PerformanceSampler sampler = activeSampler;
+        if (sampler != null && sampler.primarySampler != null) {
+            sampler.primarySampler.beginTick();
+        }
+    }
+
+    public static void endServerWorkTick() {
+        serverTickInProgress = false;
+        PerformanceSampler sampler = activeSampler;
+        if (sampler != null && sampler.primarySampler != null) {
+            sampler.primarySampler.endTick();
+        }
+    }
+
+    public ScanSnapshot withObservations(ScanSnapshot snapshot) {
+        PrimaryObservationSampler primary = primarySampler;
+        return new ScanSnapshot(
+            snapshot.getDurationSeconds(),
+            snapshot.getSampledTicks(),
+            snapshot.getDimensions(),
+            primary == null ? ObservationSnapshot.EMPTY : primary.snapshot());
+    }
 
     public PerformanceSampler() {
         this(ServerUtilitiesBridge.NONE);
@@ -230,8 +288,10 @@ public class PerformanceSampler {
             if (serverTicks % 20L == 0L) {
                 subscriptions.prune();
                 if (!active && lastSnapshot != null) {
-                    List<Subscription> pending = subscriptions.current().stream()
-                        .filter(subscription -> subscription.pendingSnapshot).toList();
+                    List<Subscription> pending = subscriptions.current()
+                        .stream()
+                        .filter(subscription -> subscription.pendingSnapshot)
+                        .toList();
                     snapshotPublisher.publish(lastSnapshot, true, pending, null);
                 }
             }
@@ -258,6 +318,10 @@ public class PerformanceSampler {
 
     public void onServerStopping(FMLServerStoppingEvent event) {
         active = false;
+        if (primarySampler != null) {
+            primarySampler.close();
+            primarySampler = null;
+        }
         subscriptions.clear();
         serverTicks = 0L;
         feedback = null;
@@ -295,6 +359,10 @@ public class PerformanceSampler {
         droppedDimensions = 0;
         droppedChunks = 0;
         resetTimings();
+        primarySampler = new PrimaryObservationSampler(ServerConfig.sampleIntervalMicros);
+        if (serverTickInProgress) {
+            primarySampler.beginTick();
+        }
         List<Subscription> currentSubscriptions = subscriptions.current();
         if (!currentSubscriptions.isEmpty()) {
             sendStatusToSubscribers(ScanProgressPacket.STARTED);
@@ -311,18 +379,22 @@ public class PerformanceSampler {
 
     private void finishScan() {
         captureGarbageCollection();
+        if (primarySampler != null) {
+            primarySampler.close();
+        }
         active = false;
         try {
             int actualDurationSeconds = (int) Math.max(1L, Math.min(durationSeconds, (sampledTicks + 19L) / 20L));
-            ScanSnapshot snapshot = snapshotBuilder.build(
-                actualDurationSeconds,
-                sampledTicks,
-                dimensions,
-                ServerConfig.maxChunksPerDimension,
-                objectHotspots);
+            ScanSnapshot snapshot = withObservations(
+                snapshotBuilder.build(
+                    actualDurationSeconds,
+                    sampledTicks,
+                    dimensions,
+                    ServerConfig.maxChunksPerDimension,
+                    objectHotspots));
             lastSnapshot = snapshot;
-            Set<NetworkManager> delivered = snapshotPublisher.publish(
-                snapshot, true, subscriptions.current(), objectHotspots);
+            Set<NetworkManager> delivered = snapshotPublisher
+                .publish(snapshot, true, subscriptions.current(), objectHotspots);
             if (droppedDimensions > 0 || droppedChunks > 0) {
                 FlameChunk.LOG.warn(
                     "FlameChunk scan dropped {} dimensions and {} chunks because configured bounds were reached",
@@ -342,6 +414,7 @@ public class PerformanceSampler {
                 ServerMessages.send(feedback, "flamechunk.command.failed");
             }
         } finally {
+            primarySampler = null;
             feedback = null;
             resetTimings();
         }
@@ -360,12 +433,13 @@ public class PerformanceSampler {
             return;
         }
         try {
-            ScanSnapshot snapshot = snapshotBuilder.build(
-                durationSeconds,
-                sampledTicks,
-                dimensions,
-                Math.min(ServerConfig.maxChunksPerDimension, ServerConfig.liveSnapshotChunkLimit),
-                null);
+            ScanSnapshot snapshot = withObservations(
+                snapshotBuilder.build(
+                    durationSeconds,
+                    sampledTicks,
+                    dimensions,
+                    Math.min(ServerConfig.maxChunksPerDimension, ServerConfig.liveSnapshotChunkLimit),
+                    null));
             snapshotPublisher.publish(snapshot, false, currentSubscriptions, objectHotspots);
         } catch (RuntimeException exception) {
             FlameChunk.LOG.debug("Unable to publish a live FlameChunk snapshot", exception);
@@ -390,19 +464,51 @@ public class PerformanceSampler {
                 updateSubscription(request.player, false, false);
             } else if (request.seconds == ScanRequestPacket.SUBSCRIBE_REQUEST
                 || request.seconds == ScanRequestPacket.SUBSCRIBE_WORLD_REQUEST) {
-                updateSubscription(request.player, true,
-                    request.seconds == ScanRequestPacket.SUBSCRIBE_WORLD_REQUEST);
-            } else if (active) {
-                sendStatus(request.player, ScanProgressPacket.BUSY);
-            } else if (!startScan(request.player, request.player, request.seconds)) {
-                sendStatus(request.player, ScanProgressPacket.DENIED);
-            }
+                    updateSubscription(
+                        request.player,
+                        true,
+                        request.seconds == ScanRequestPacket.SUBSCRIBE_WORLD_REQUEST);
+                } else if (active) {
+                    sendStatus(request.player, ScanProgressPacket.BUSY);
+                } else if (!startScan(request.player, request.player, request.seconds)) {
+                    sendStatus(request.player, ScanProgressPacket.DENIED);
+                }
         }
     }
 
     private void writeReport(ICommandSender sender, ScanSnapshot snapshot) {
+        ObservationSnapshot observations = snapshot.observations;
+        ServerMessages.send(
+            sender,
+            "flamechunk.command.report.observations",
+            observations.averageMspt(),
+            observations.peakTickNanos() / 1000000.0D,
+            observations.sampleAttempts(),
+            observations.completedTicks());
+        if (!observations.degradationReason()
+            .isEmpty()) {
+            ServerMessages.send(sender, observations.degradationReason());
+        }
+        for (int index = 0; index < Math.min(
+            8,
+            observations.entries()
+                .size()); index++) {
+            ObservationSnapshot.Entry entry = observations.entries()
+                .get(index);
+            ServerMessages.send(
+                sender,
+                "flamechunk.command.report.observationEntry",
+                entry.category()
+                    .name(),
+                entry.typeName(),
+                entry.dimensionId(),
+                entry.nanos() / 1000000.0D / Math.max(1L, observations.completedTicks()),
+                entry.peakNanos() / 1000000.0D,
+                entry.samples());
+        }
         sender.addChatMessage(
-            ServerMessages.translated(sender,
+            ServerMessages.translated(
+                sender,
                 "flamechunk.command.report.header",
                 snapshot.getDurationSeconds(),
                 snapshot.getSampledTicks()));
@@ -414,7 +520,8 @@ public class PerformanceSampler {
                 long categoryNanos = globalNanos[category.ordinal()];
                 if (categoryNanos > 0L) {
                     sender.addChatMessage(
-                        ServerMessages.translated(sender,
+                        ServerMessages.translated(
+                            sender,
                             "flamechunk.command.report.category",
                             category.name(),
                             categoryNanos / 1000000.0D / Math.max(1L, snapshot.getSampledTicks())));
@@ -425,7 +532,8 @@ public class PerformanceSampler {
             for (int typeIndex = 0; typeIndex < globalTypeLimit; typeIndex++) {
                 ChunkTypeTiming timing = globalTypeTimings.get(typeIndex);
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.report.hotspot",
                         timing.getCategory()
                             .name(),
@@ -442,17 +550,19 @@ public class PerformanceSampler {
                     continue;
                 }
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.report.chunk",
                         chunk.getChunkX(),
                         chunk.getChunkZ(),
                         chunk.calculateMspt(snapshot.getSampledTicks()),
                         chunk.getTicketSource()
-                            .length() == 0 ? "none" : chunk.getTicketSource()));
+                            .isEmpty() ? "none" : chunk.getTicketSource()));
                 int typeCount = 0;
                 for (ChunkTypeTiming typeTiming : chunk.getTypeTimings()) {
                     sender.addChatMessage(
-                        ServerMessages.translated(sender,
+                        ServerMessages.translated(
+                            sender,
                             "flamechunk.command.report.hotspot",
                             typeTiming.getCategory()
                                 .name(),
@@ -473,7 +583,8 @@ public class PerformanceSampler {
             for (int index = 0; index < objectLimit; index++) {
                 ObjectHotspot hotspot = dimension.objectHotspots.get(index);
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.report.object",
                         hotspot.category.name(),
                         hotspot.typeName,
@@ -517,8 +628,9 @@ public class PerformanceSampler {
     public boolean updateSubscription(EntityPlayerMP player, boolean subscribed, boolean worldHotspots) {
         Update update = subscriptions.update(player, subscribed, worldHotspots);
         if (update == Update.DENIED || update == Update.FULL) {
-            sendStatus(player, update == Update.FULL ? ScanProgressPacket.QUEUE_FULL
-                : ScanProgressPacket.SUBSCRIPTION_DENIED);
+            sendStatus(
+                player,
+                update == Update.FULL ? ScanProgressPacket.QUEUE_FULL : ScanProgressPacket.SUBSCRIPTION_DENIED);
             return false;
         }
         if (active && (update == Update.ADDED || update == Update.CHANGED)) {

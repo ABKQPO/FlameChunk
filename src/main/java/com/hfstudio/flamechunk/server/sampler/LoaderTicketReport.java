@@ -37,7 +37,8 @@ public class LoaderTicketReport {
             ImmutableSetMultimap<ChunkCoordIntPair, ForgeChunkManager.Ticket> tickets = ForgeChunkManager
                 .getPersistentChunksFor(world);
             sender.addChatMessage(
-                ServerMessages.translated(sender,
+                ServerMessages.translated(
+                    sender,
                     "flamechunk.command.tickets.dimension",
                     world.provider.dimensionId,
                     tickets.size()));
@@ -63,7 +64,8 @@ public class LoaderTicketReport {
             for (int index = 0; index < displayed; index++) {
                 TicketEntry entry = rows.get(index);
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.tickets.entry",
                         entry.chunkX,
                         entry.chunkZ,
@@ -73,7 +75,8 @@ public class LoaderTicketReport {
                 sender.addChatMessage(ServerMessages.translated(sender, "flamechunk.command.tickets.empty"));
             } else if (tickets.size() > displayed) {
                 sender.addChatMessage(
-                    ServerMessages.translated(sender, "flamechunk.command.tickets.truncated", tickets.size() - displayed));
+                    ServerMessages
+                        .translated(sender, "flamechunk.command.tickets.truncated", tickets.size() - displayed));
             }
             List<ChunkCoordIntPair> frozen = LoaderTicketControlService.frozenChunks(world);
             sender.addChatMessage(
@@ -81,14 +84,16 @@ public class LoaderTicketReport {
             for (int index = 0; index < frozen.size() && index < MAX_TICKET_ROWS_PER_DIMENSION; index++) {
                 ChunkCoordIntPair chunk = frozen.get(index);
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.tickets.frozen_entry",
                         chunk.chunkXPos,
                         chunk.chunkZPos));
             }
             if (frozen.size() > MAX_TICKET_ROWS_PER_DIMENSION) {
                 sender.addChatMessage(
-                    ServerMessages.translated(sender,
+                    ServerMessages.translated(
+                        sender,
                         "flamechunk.command.tickets.truncated",
                         frozen.size() - MAX_TICKET_ROWS_PER_DIMENSION));
             }

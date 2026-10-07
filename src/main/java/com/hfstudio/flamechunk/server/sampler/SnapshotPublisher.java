@@ -25,8 +25,8 @@ public class SnapshotPublisher {
     public final SnapshotCodec snapshotCodec = new SnapshotCodec();
     public final ZstdCompressionCodec compressionCodec = new ZstdCompressionCodec();
 
-    public Set<NetworkManager> publish(ScanSnapshot snapshot, boolean finalSnapshot,
-        List<Subscription> subscriptions, ObjectHotspotStore hotspots) {
+    public Set<NetworkManager> publish(ScanSnapshot snapshot, boolean finalSnapshot, List<Subscription> subscriptions,
+        ObjectHotspotStore hotspots) {
         Set<NetworkManager> delivered = new HashSet<>();
         SnapshotPacket reportPacket = null;
         SnapshotPacket mapPacket = null;
@@ -54,8 +54,8 @@ public class SnapshotPublisher {
                 subscription.pendingSnapshot = false;
                 delivered.add(subscription.manager);
             } catch (RuntimeException exception) {
-                FlameChunk.LOG.warn("Unable to publish FlameChunk snapshot to {}", player.getCommandSenderName(),
-                    exception);
+                FlameChunk.LOG
+                    .warn("Unable to publish FlameChunk snapshot to {}", player.getCommandSenderName(), exception);
             }
         }
         return delivered;
@@ -73,17 +73,32 @@ public class SnapshotPublisher {
         for (int index = 0; index < dimensions.length; index++) {
             DimensionSnapshot dimension = dimensions[index];
             List<ObjectHotspot> nearby = includeHotspots && hotspots != null
-                && player.worldObj != null && dimension.getDimensionId() == player.dimension
-                ? hotspots.snapshotNear(dimension.getDimensionId(), player.posX, player.posY, player.posZ,
-                    ServerConfig.worldHotspotRadius, ServerConfig.worldHotspotLimit)
-                : Collections.emptyList();
+                && player.worldObj != null
+                && dimension.getDimensionId() == player.dimension
+                    ? hotspots.snapshotNear(
+                        dimension.getDimensionId(),
+                        player.posX,
+                        player.posY,
+                        player.posZ,
+                        ServerConfig.worldHotspotRadius,
+                        ServerConfig.worldHotspotLimit)
+                    : Collections.emptyList();
             if (nearby.isEmpty() && dimension.objectHotspots.isEmpty()) {
                 continue;
             }
-            dimensions[index] = new DimensionSnapshot(dimension.getDimensionId(),
-                dimension.getChunks().toArray(new ChunkSnapshot[0]), dimension.getGlobalNanos(),
-                dimension.getGlobalCounts(), dimension.getGlobalTypeTimings(), nearby);
+            dimensions[index] = new DimensionSnapshot(
+                dimension.getDimensionId(),
+                dimension.getChunks()
+                    .toArray(new ChunkSnapshot[0]),
+                dimension.getGlobalNanos(),
+                dimension.getGlobalCounts(),
+                dimension.getGlobalTypeTimings(),
+                nearby);
         }
-        return new ScanSnapshot(snapshot.getDurationSeconds(), snapshot.getSampledTicks(), dimensions);
+        return new ScanSnapshot(
+            snapshot.getDurationSeconds(),
+            snapshot.getSampledTicks(),
+            dimensions,
+            snapshot.observations);
     }
 }
