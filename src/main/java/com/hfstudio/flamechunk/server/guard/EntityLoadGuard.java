@@ -1,9 +1,7 @@
 package com.hfstudio.flamechunk.server.guard;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
@@ -18,6 +16,8 @@ import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.gameevent.TickEvent.WorldTickEvent;
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 public class EntityLoadGuard {
 
@@ -90,7 +90,8 @@ public class EntityLoadGuard {
             || ++tickCounter % Math.max(20, ServerConfig.entityWarningIntervalSeconds * 20L) != 0L) {
             return;
         }
-        Map<Long, Integer> counts = new HashMap<>();
+        Long2IntOpenHashMap counts = new Long2IntOpenHashMap();
+        counts.defaultReturnValue(0);
         for (Object value : world.loadedEntityList) {
             if (!(value instanceof Entity entity)) {
                 continue;
@@ -99,25 +100,25 @@ public class EntityLoadGuard {
                 continue;
             }
             long key = pack(entity.chunkCoordX, entity.chunkCoordZ);
-            Integer count = counts.get(key);
-            if (count == null && counts.size() >= MAX_TRACKED_CHUNKS) {
+            int count = counts.get(key);
+            if (count == 0 && counts.size() >= MAX_TRACKED_CHUNKS) {
                 continue;
             }
-            counts.put(key, count == null ? 1 : count + 1);
+            counts.put(key, count + 1);
         }
         int warnings = 0;
-        for (Map.Entry<Long, Integer> entry : counts.entrySet()) {
-            if (entry.getValue() < ServerConfig.entityWarningThreshold) {
+        for (Long2IntMap.Entry entry : counts.long2IntEntrySet()) {
+            if (entry.getIntValue() < ServerConfig.entityWarningThreshold) {
                 continue;
             }
-            int chunkX = unpackX(entry.getKey());
-            int chunkZ = unpackZ(entry.getKey());
+            int chunkX = unpackX(entry.getLongKey());
+            int chunkZ = unpackZ(entry.getLongKey());
             FlameChunk.LOG.warn(
                 "High entity load in dimension {} chunk ({}, {}): {} entities ({})",
                 world.provider.dimensionId,
                 chunkX,
                 chunkZ,
-                entry.getValue(),
+                entry.getIntValue(),
                 serverUtilities.describeClaim(world, chunkX, chunkZ));
             if (++warnings >= 8) {
                 break;

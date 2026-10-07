@@ -108,7 +108,6 @@ public class PerformanceSampler {
         }
     }
 
-    @SubscribeEvent
     public void onServerStopping(FMLServerStoppingEvent event) {
         active = false;
         target = null;

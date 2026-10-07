@@ -14,7 +14,7 @@ import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 2;
+    private static final int CODEC_VERSION = 3;
     private static final int CATEGORY_COUNT = 7;
 
     public byte[] encode(ScanSnapshot snapshot) {
@@ -49,6 +49,7 @@ public class SnapshotCodec {
                     output.writeInt(chunk.getEntityCount());
                     output.writeByte(chunk.getLoadLevel());
                     output.writeInt(chunk.getTicketSourceCode());
+                    output.writeUTF(chunk.getTicketSource());
                 }
             }
             output.flush();
@@ -96,6 +97,7 @@ public class SnapshotCodec {
                     int entityCount = input.readInt();
                     byte loadLevel = input.readByte();
                     int ticketSourceCode = input.readInt();
+                    String ticketSource = input.readUTF();
                     if (entityCount < 0 || ticketSourceCode < 0) {
                         throw new IllegalArgumentException("Chunk metadata cannot be negative");
                     }
@@ -107,7 +109,8 @@ public class SnapshotCodec {
                         counts,
                         entityCount,
                         loadLevel,
-                        ticketSourceCode);
+                        ticketSourceCode,
+                        ticketSource);
                 }
                 dimensions[dimensionIndex] = new DimensionSnapshot(dimensionId, chunks, globalNanos, globalCounts);
             }

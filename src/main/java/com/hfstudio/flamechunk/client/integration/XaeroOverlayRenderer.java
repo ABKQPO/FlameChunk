@@ -11,6 +11,10 @@ import org.lwjgl.opengl.GL11;
 public class XaeroOverlayRenderer {
 
     public static void render(double cameraX, double cameraZ, double scale) {
+        render(cameraX, cameraZ, scale, -1, -1);
+    }
+
+    public static void render(double cameraX, double cameraZ, double scale, int mouseX, int mouseY) {
         if (scale <= 0.0D) {
             return;
         }
@@ -61,6 +65,12 @@ public class XaeroOverlayRenderer {
         } finally {
             GL11.glPopMatrix();
             GL11.glPopAttrib();
+        }
+        if (mouseX >= 0 && mouseY >= 0) {
+            int chunkX = floorChunk(cameraX + (mouseX - screen.width * 0.5D) / scale);
+            int chunkZ = floorChunk(cameraZ + (mouseY - screen.height * 0.5D) / scale);
+            MapOverlayTooltip
+                .draw(mouseX, mouseY, model.find(dimensionId, chunkX, chunkZ), screen.width, screen.height);
         }
     }
 
@@ -151,5 +161,9 @@ public class XaeroOverlayRenderer {
 
     private static double toScreenZ(double block, double camera, double scale, int height) {
         return (block - camera) * scale + height * 0.5D;
+    }
+
+    private static int floorChunk(double block) {
+        return (int) Math.floor(block / 16.0D);
     }
 }

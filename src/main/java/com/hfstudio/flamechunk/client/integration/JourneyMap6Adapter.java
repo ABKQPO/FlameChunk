@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.hfstudio.flamechunk.FlameChunk;
 
 import cpw.mods.fml.common.Optional;
@@ -18,7 +20,7 @@ import journeymap.api.v2.common.JourneyMapPlugin;
 import journeymap.api.v2.common.util.BlockPos;
 
 @JourneyMapPlugin(apiVersion = "2.0.0", require = false)
-@Optional.Interface(iface = "journeymap.api.v2.client.IClientPlugin", modid = "journeymap", striprefs = true)
+@Optional.Interface(iface = "journeymap.api.v2.client.IClientPlugin", modid = "journeymap_api", striprefs = true)
 public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
 
     private static final String GROUP_NAME = "flamechunk.heatmap";
@@ -27,14 +29,14 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     private IClientAPI api;
 
     @Override
-    @Optional.Method(modid = "journeymap")
+    @Optional.Method(modid = "journeymap_api")
     public String getModId() {
         return FlameChunk.MODID;
     }
 
     @Override
-    @Optional.Method(modid = "journeymap")
-    public void initialize(IClientAPI value) {
+    @Optional.Method(modid = "journeymap_api")
+    public void initialize(@NotNull IClientAPI value) {
         api = value;
         activeInstance = this;
         publish(ClientMapOverlayState.get());
@@ -113,7 +115,7 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
             properties,
             new MapPolygon(points));
         overlay.setOverlayGroupName(GROUP_NAME)
-            .setTitle(cell.getLabel())
+            .setTitle(String.join("\n", MapOverlayTooltip.lines(cell)))
             .setLabel(cell.getLabel())
             .setActiveUIs(Context.UI.Fullscreen, Context.UI.Minimap)
             .setDisplayOrder(100);

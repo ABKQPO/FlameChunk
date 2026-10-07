@@ -20,6 +20,8 @@ public class ChunkSnapshot {
     private final byte loadLevel;
     @Getter
     private final int ticketSourceCode;
+    @Getter
+    private final String ticketSource;
 
     public ChunkSnapshot(int dimensionId, int chunkX, int chunkZ, long[] nanos, int[] counts) {
         this(dimensionId, chunkX, chunkZ, nanos, counts, 0, (byte) 0, 0);
@@ -27,10 +29,24 @@ public class ChunkSnapshot {
 
     public ChunkSnapshot(int dimensionId, int chunkX, int chunkZ, long[] nanos, int[] counts, int entityCount,
         byte loadLevel, int ticketSourceCode) {
+        this(
+            dimensionId,
+            chunkX,
+            chunkZ,
+            nanos,
+            counts,
+            entityCount,
+            loadLevel,
+            ticketSourceCode,
+            ticketSourceCode == 0 ? "" : "forced");
+    }
+
+    public ChunkSnapshot(int dimensionId, int chunkX, int chunkZ, long[] nanos, int[] counts, int entityCount,
+        byte loadLevel, int ticketSourceCode, String ticketSource) {
         if (nanos == null || counts == null || nanos.length != 7 || counts.length != 7) {
             throw new IllegalArgumentException("Chunk timing arrays must contain seven values");
         }
-        if (entityCount < 0 || ticketSourceCode < 0) {
+        if (entityCount < 0 || ticketSourceCode < 0 || ticketSource == null || ticketSource.length() > 64) {
             throw new IllegalArgumentException("Chunk metadata cannot be negative");
         }
         this.dimensionId = dimensionId;
@@ -41,6 +57,7 @@ public class ChunkSnapshot {
         this.entityCount = entityCount;
         this.loadLevel = loadLevel;
         this.ticketSourceCode = ticketSourceCode;
+        this.ticketSource = ticketSource;
     }
 
     public long[] getNanos() {
