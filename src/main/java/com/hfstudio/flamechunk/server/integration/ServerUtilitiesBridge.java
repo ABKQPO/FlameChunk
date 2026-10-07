@@ -12,6 +12,8 @@ public interface ServerUtilitiesBridge {
 
     boolean isAvailable();
 
+    default void registerPermissions() {}
+
     boolean hasPermission(EntityPlayerMP player, String permission);
 
     String describeClaim(World world, int chunkX, int chunkZ);

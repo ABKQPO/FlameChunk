@@ -1,5 +1,7 @@
 package com.hfstudio.flamechunk;
 
+import net.minecraftforge.common.MinecraftForge;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -7,8 +9,10 @@ import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.network.NetworkHandler;
 import com.hfstudio.flamechunk.server.command.FlameChunkCommand;
 import com.hfstudio.flamechunk.server.guard.EntityLoadGuard;
+import com.hfstudio.flamechunk.server.guard.WeakChunkClearService;
 import com.hfstudio.flamechunk.server.guard.WeakChunkInspector;
 import com.hfstudio.flamechunk.server.integration.ServerUtilitiesBridge;
+import com.hfstudio.flamechunk.server.sampler.LoaderTicketControlService;
 import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -22,6 +26,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
+import lombok.Getter;
 
 @Mod(
     modid = FlameChunk.MODID,
@@ -46,6 +51,9 @@ public class FlameChunk {
     public static ServerUtilitiesBridge serverUtilities;
     private EntityLoadGuard entityLoadGuard;
     private WeakChunkInspector weakChunkInspector;
+    @Getter
+    private WeakChunkClearService weakChunkClearService;
+    private LoaderTicketControlService loaderTicketControlService;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
@@ -60,6 +68,8 @@ public class FlameChunk {
         sampler = new PerformanceSampler(serverUtilities);
         entityLoadGuard = new EntityLoadGuard(serverUtilities);
         weakChunkInspector = new WeakChunkInspector(serverUtilities);
+        weakChunkClearService = new WeakChunkClearService(serverUtilities);
+        loaderTicketControlService = new LoaderTicketControlService();
         FMLCommonHandler.instance()
             .bus()
             .register(sampler);
@@ -69,11 +79,19 @@ public class FlameChunk {
         FMLCommonHandler.instance()
             .bus()
             .register(weakChunkInspector);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(weakChunkClearService);
+        MinecraftForge.EVENT_BUS.register(loaderTicketControlService);
+        MinecraftForge.EVENT_BUS.register(weakChunkClearService);
         proxy.preInit(event);
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
+        if (serverUtilities != null && serverUtilities.isAvailable()) {
+            serverUtilities.registerPermissions();
+        }
         proxy.init(event);
     }
 
@@ -89,13 +107,20 @@ public class FlameChunk {
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
-        event.registerServerCommand(new FlameChunkCommand());
+        event.registerServerCommand(new FlameChunkCommand(weakChunkClearService, weakChunkInspector));
     }
 
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
+        LoaderTicketControlService.clearRuntimeState();
         if (sampler != null) {
             sampler.onServerStopping(event);
+        }
+        if (weakChunkClearService != null) {
+            weakChunkClearService.onServerStopping(event);
+        }
+        if (weakChunkInspector != null) {
+            weakChunkInspector.onServerStopping(event);
         }
     }
 }

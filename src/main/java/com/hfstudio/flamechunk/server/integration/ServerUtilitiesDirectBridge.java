@@ -8,6 +8,7 @@ import com.hfstudio.flamechunk.FlameChunk;
 import serverutils.data.ClaimedChunk;
 import serverutils.data.ClaimedChunks;
 import serverutils.lib.math.ChunkDimPos;
+import serverutils.lib.util.permission.DefaultPermissionLevel;
 import serverutils.lib.util.permission.PermissionAPI;
 
 public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
@@ -15,6 +16,19 @@ public class ServerUtilitiesDirectBridge implements ServerUtilitiesBridge {
     @Override
     public boolean isAvailable() {
         return true;
+    }
+
+    @Override
+    public void registerPermissions() {
+        PermissionAPI.registerNode("flamechunk.scan", DefaultPermissionLevel.OP, "Allow FlameChunk performance scans");
+        PermissionAPI.registerNode(
+            "flamechunk.weakclear",
+            DefaultPermissionLevel.OP,
+            "Allow clearing entities from weakly loaded chunks");
+        PermissionAPI.registerNode(
+            "flamechunk.loadercontrol",
+            DefaultPermissionLevel.OP,
+            "Allow inspection and control of chunk loader tickets");
     }
 
     @Override

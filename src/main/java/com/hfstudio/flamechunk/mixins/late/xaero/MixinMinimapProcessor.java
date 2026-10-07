@@ -18,7 +18,7 @@ public class MixinMinimapProcessor {
 
     @Inject(method = "onRender", at = @At("RETURN"), remap = false)
     private void flamechunk$renderHeatmap(int x, int y, int width, int height, int scale, int size, int boxSize,
-        float partialTicks, CallbackInfo callbackInfo) {
-        XaeroOverlayRenderer.renderMinimap(x, y, boxSize, partialTicks, minimapZoom);
+        float partial, CallbackInfo callbackInfo) {
+        XaeroOverlayRenderer.renderMinimap(x, y, boxSize, partial, minimapZoom);
     }
 }

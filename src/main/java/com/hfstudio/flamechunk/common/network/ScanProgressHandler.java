@@ -12,7 +12,11 @@ public class ScanProgressHandler implements IMessageHandler<ScanProgressPacket, 
     @Override
     public IMessage onMessage(ScanProgressPacket message, MessageContext context) {
         if (context.side.isClient() && message.isValid()) {
-            FlameChunk.proxy.handleProgress(message);
+            if (message.isStatusMessage()) {
+                FlameChunk.proxy.handleScanStatus(message.getStatus());
+            } else {
+                FlameChunk.proxy.handleProgress(message);
+            }
         } else if (context.side.isClient()) {
             FlameChunk.LOG.warn("Rejected invalid FlameChunk progress packet");
         }

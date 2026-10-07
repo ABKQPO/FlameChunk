@@ -6,16 +6,22 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.hfstudio.flamechunk.common.config.ServerConfig;
 import com.hfstudio.flamechunk.common.data.ChunkSnapshot;
+import com.hfstudio.flamechunk.common.data.ChunkTypeTiming;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
+import com.hfstudio.flamechunk.common.data.ObjectHotspot;
+import com.hfstudio.flamechunk.common.data.ScanLimits;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
+import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 3;
-    private static final int CATEGORY_COUNT = 7;
+    private static final int CODEC_VERSION = 8;
+    public static final TickCategory[] CATEGORIES = TickCategory.values();
 
     public byte[] encode(ScanSnapshot snapshot) {
         if (snapshot == null) {
@@ -41,6 +47,8 @@ public class SnapshotCodec {
                 output.writeInt(chunks.length);
                 writeLongs(output, dimension.getGlobalNanos());
                 writeInts(output, dimension.getGlobalCounts());
+                writeTypeTimings(output, dimension.getGlobalTypeTimings());
+                writeObjectHotspots(output, dimension.objectHotspots);
                 for (ChunkSnapshot chunk : chunks) {
                     output.writeInt(chunk.getChunkX());
                     output.writeInt(chunk.getChunkZ());
@@ -50,6 +58,10 @@ public class SnapshotCodec {
                     output.writeByte(chunk.getLoadLevel());
                     output.writeInt(chunk.getTicketSourceCode());
                     output.writeUTF(chunk.getTicketSource());
+                    writeTypeTimings(output, chunk.getTypeTimings());
+                    if (bytes.size() > ServerConfig.maxPacketBytes) {
+                        throw new IllegalArgumentException("Encoded snapshot exceeds configured packet limit");
+                    }
                 }
             }
             output.flush();
@@ -88,6 +100,8 @@ public class SnapshotCodec {
                 int chunkCount = readCount(input, ServerConfig.maxChunksPerDimension, "chunk");
                 long[] globalNanos = readLongs(input);
                 int[] globalCounts = readInts(input);
+                List<ChunkTypeTiming> globalTypeTimings = readTypeTimings(input);
+                List<ObjectHotspot> objectHotspots = readObjectHotspots(input);
                 ChunkSnapshot[] chunks = new ChunkSnapshot[chunkCount];
                 for (int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
                     int chunkX = input.readInt();
@@ -101,6 +115,7 @@ public class SnapshotCodec {
                     if (entityCount < 0 || ticketSourceCode < 0) {
                         throw new IllegalArgumentException("Chunk metadata cannot be negative");
                     }
+                    List<ChunkTypeTiming> typeTimings = readTypeTimings(input);
                     chunks[chunkIndex] = new ChunkSnapshot(
                         dimensionId,
                         chunkX,
@@ -110,9 +125,16 @@ public class SnapshotCodec {
                         entityCount,
                         loadLevel,
                         ticketSourceCode,
-                        ticketSource);
+                        ticketSource,
+                        typeTimings);
                 }
-                dimensions[dimensionIndex] = new DimensionSnapshot(dimensionId, chunks, globalNanos, globalCounts);
+                dimensions[dimensionIndex] = new DimensionSnapshot(
+                    dimensionId,
+                    chunks,
+                    globalNanos,
+                    globalCounts,
+                    globalTypeTimings,
+                    objectHotspots);
             }
             if (input.available() != 0) {
                 throw new IllegalArgumentException("Trailing snapshot data");
@@ -126,8 +148,8 @@ public class SnapshotCodec {
     }
 
     private static void writeLongs(DataOutputStream output, long[] values) throws IOException {
-        if (values.length != CATEGORY_COUNT) {
-            throw new IllegalArgumentException("Expected seven timing values");
+        if (values.length != TickCategory.COUNT) {
+            throw new IllegalArgumentException("Unexpected timing category count");
         }
         for (long value : values) {
             if (value < 0L) {
@@ -137,9 +159,88 @@ public class SnapshotCodec {
         }
     }
 
+    private static void writeTypeTimings(DataOutputStream output, List<ChunkTypeTiming> timings) throws IOException {
+        checkCount(timings.size(), 16, "type timing");
+        output.writeByte(timings.size());
+        for (ChunkTypeTiming timing : timings) {
+            output.writeByte(
+                timing.getCategory()
+                    .ordinal());
+            output.writeUTF(timing.getTypeName());
+            output.writeLong(timing.getNanos());
+            output.writeInt(timing.getCount());
+            output.writeLong(timing.getPeakNanos());
+        }
+    }
+
+    private static List<ChunkTypeTiming> readTypeTimings(DataInputStream input) throws IOException {
+        int count = input.readUnsignedByte();
+        if (count > 16) {
+            throw new IllegalArgumentException("Type timing count exceeds the limit");
+        }
+        List<ChunkTypeTiming> timings = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            int categoryIndex = input.readUnsignedByte();
+            if (categoryIndex >= TickCategory.COUNT) {
+                throw new IllegalArgumentException("Unknown type timing category");
+            }
+            timings.add(
+                new ChunkTypeTiming(
+                    CATEGORIES[categoryIndex],
+                    input.readUTF(),
+                    input.readLong(),
+                    input.readInt(),
+                    input.readLong()));
+        }
+        return timings;
+    }
+
+    public static void writeObjectHotspots(DataOutputStream output, List<ObjectHotspot> hotspots) throws IOException {
+        checkCount(hotspots.size(), ObjectHotspot.MAX_PER_DIMENSION, "object hotspot");
+        output.writeInt(hotspots.size());
+        for (ObjectHotspot hotspot : hotspots) {
+            output.writeByte(hotspot.category.ordinal());
+            output.writeUTF(hotspot.typeName);
+            output.writeInt(hotspot.entityId);
+            output.writeLong(hotspot.identityMost);
+            output.writeLong(hotspot.identityLeast);
+            output.writeInt(hotspot.x);
+            output.writeInt(hotspot.y);
+            output.writeInt(hotspot.z);
+            output.writeLong(hotspot.nanos);
+            output.writeLong(hotspot.peakNanos);
+            output.writeInt(hotspot.count);
+        }
+    }
+
+    public static List<ObjectHotspot> readObjectHotspots(DataInputStream input) throws IOException {
+        int count = readCount(input, ObjectHotspot.MAX_PER_DIMENSION, "object hotspot");
+        List<ObjectHotspot> hotspots = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            int categoryIndex = input.readUnsignedByte();
+            if (categoryIndex >= CATEGORIES.length) {
+                throw new IllegalArgumentException("Unknown object hotspot category");
+            }
+            hotspots.add(
+                new ObjectHotspot(
+                    CATEGORIES[categoryIndex],
+                    input.readUTF(),
+                    input.readInt(),
+                    input.readLong(),
+                    input.readLong(),
+                    input.readInt(),
+                    input.readInt(),
+                    input.readInt(),
+                    input.readLong(),
+                    input.readLong(),
+                    input.readInt()));
+        }
+        return hotspots;
+    }
+
     private static void writeInts(DataOutputStream output, int[] values) throws IOException {
-        if (values.length != CATEGORY_COUNT) {
-            throw new IllegalArgumentException("Expected seven count values");
+        if (values.length != TickCategory.COUNT) {
+            throw new IllegalArgumentException("Unexpected timing category count");
         }
         for (int value : values) {
             if (value < 0) {
@@ -150,7 +251,7 @@ public class SnapshotCodec {
     }
 
     private static long[] readLongs(DataInputStream input) throws IOException {
-        long[] values = new long[CATEGORY_COUNT];
+        long[] values = new long[TickCategory.COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readLong();
             if (values[index] < 0L) {
@@ -161,7 +262,7 @@ public class SnapshotCodec {
     }
 
     private static int[] readInts(DataInputStream input) throws IOException {
-        int[] values = new int[CATEGORY_COUNT];
+        int[] values = new int[TickCategory.COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readInt();
             if (values[index] < 0) {
@@ -184,7 +285,7 @@ public class SnapshotCodec {
     }
 
     private static void validateScanWindow(int duration, long ticks) {
-        if (duration < 1 || duration > 60 || ticks < 0L || ticks > duration * 20L) {
+        if (!ScanLimits.isValidDuration(duration) || ticks < 0L || ticks > duration * 20L) {
             throw new IllegalArgumentException("Invalid scan window");
         }
     }

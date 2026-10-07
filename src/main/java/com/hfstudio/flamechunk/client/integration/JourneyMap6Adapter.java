@@ -1,22 +1,29 @@
 package com.hfstudio.flamechunk.client.integration;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
 
 import com.hfstudio.flamechunk.FlameChunk;
+import com.hfstudio.flamechunk.client.config.ClientConfig;
+import com.hfstudio.flamechunk.client.render.ColorUtils;
 
 import cpw.mods.fml.common.Optional;
 import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.IClientPlugin;
+import journeymap.api.v2.client.display.DisplayType;
 import journeymap.api.v2.client.display.PolygonOverlay;
+import journeymap.api.v2.client.event.PopupMenuEvent.FullscreenPopupMenuEvent;
+import journeymap.api.v2.client.fullscreen.ModPopupMenu;
 import journeymap.api.v2.client.model.MapPolygon;
 import journeymap.api.v2.client.model.ShapeProperties;
 import journeymap.api.v2.common.Context;
 import journeymap.api.v2.common.JourneyMapPlugin;
+import journeymap.api.v2.common.event.FullscreenEventRegistry;
 import journeymap.api.v2.common.util.BlockPos;
 
 @JourneyMapPlugin(apiVersion = "2.0.0", require = false)
@@ -25,7 +32,6 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
 
     private static final String GROUP_NAME = "flamechunk.heatmap";
     private static volatile JourneyMap6Adapter activeInstance;
-    private final Map<String, PolygonOverlay> overlays = new HashMap<>();
     private IClientAPI api;
 
     @Override
@@ -39,7 +45,41 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     public void initialize(@NotNull IClientAPI value) {
         api = value;
         activeInstance = this;
+        FullscreenEventRegistry.FULLSCREEN_POPUP_MENU_EVENT.subscribe(this, FlameChunk.MODID, this::addPopupMenuItems);
         publish(ClientMapOverlayState.get());
+        MapOverlayControls.requestWeakSnapshot();
+    }
+
+    @Optional.Method(modid = "journeymap_api")
+    public void addPopupMenuItems(FullscreenPopupMenuEvent event) {
+        if (event.getFullscreen() == null || event.getFullscreen()
+            .getUiState() == null) {
+            return;
+        }
+        final int mapDimensionId = event.getFullscreen()
+            .getUiState().dimension;
+        ModPopupMenu popupMenu = event.getPopupMenu();
+        popupMenu.addMenuItem(
+            StatCollector.translateToLocal("flamechunk.client.journeymap.scan"),
+            position -> MapOverlayControls.requestScan());
+        popupMenu.addMenuItem(
+            StatCollector.translateToLocal("flamechunk.client.journeymap.clear"),
+            position -> MapOverlayControls.clear());
+        popupMenu.addMenuItem(StatCollector.translateToLocal("flamechunk.client.map.weakclear"), position -> {
+            if (position != null) {
+                MapOverlayControls.openWeakClearSelection(mapDimensionId, position.getX() >> 4, position.getZ() >> 4);
+            }
+        });
+        popupMenu.addMenuItem(StatCollector.translateToLocal("flamechunk.client.map.loader.toggle"), position -> {
+            if (position != null && Minecraft.getMinecraft().theWorld != null) {
+                int chunkX = position.getX() >> 4;
+                int chunkZ = position.getZ() >> 4;
+                if (MapOverlayControls.hasLoaderControlTarget(mapDimensionId, chunkX, chunkZ)) {
+                    MapOverlayControls
+                        .confirmLoaderToggle(Minecraft.getMinecraft().currentScreen, mapDimensionId, chunkX, chunkZ);
+                }
+            }
+        });
     }
 
     public static MapOverlaySink createBridge() {
@@ -64,6 +104,7 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     }
 
     @Override
+    @Optional.Method(modid = "journeymap_api")
     public void publish(MapOverlayModel model) {
         if (api == null || model == null) {
             return;
@@ -71,7 +112,6 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         clear();
         for (MapOverlayCell cell : model.getCells()) {
             PolygonOverlay overlay = createOverlay(cell);
-            overlays.put(overlay.getId(), overlay);
             try {
                 api.show(overlay);
             } catch (Exception exception) {
@@ -81,21 +121,19 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
     }
 
     @Override
+    @Optional.Method(modid = "journeymap_api")
     public void clear() {
         if (api == null) {
-            overlays.clear();
             return;
         }
-        for (PolygonOverlay overlay : overlays.values()) {
-            try {
-                api.remove(overlay);
-            } catch (RuntimeException | LinkageError exception) {
-                FlameChunk.LOG.debug("Unable to remove a JourneyMap heatmap overlay", exception);
-            }
+        try {
+            api.removeAll(FlameChunk.MODID, DisplayType.Polygon);
+        } catch (RuntimeException | LinkageError exception) {
+            FlameChunk.LOG.debug("Unable to remove JourneyMap heatmap overlays", exception);
         }
-        overlays.clear();
     }
 
+    @Optional.Method(modid = "journeymap_api")
     private PolygonOverlay createOverlay(MapOverlayCell cell) {
         int minX = cell.getChunkX() << 4;
         int minZ = cell.getChunkZ() << 4;
@@ -108,7 +146,11 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         points.add(new BlockPos(minX, 64, maxZ));
         ShapeProperties properties = new ShapeProperties().setFillColor(cell.getColor())
             .setFillOpacity(cell.getOpacity())
-            .setStrokeOpacity(0.0F);
+            .setStrokeColor(cell.getTicketSourceColor())
+            .setStrokeOpacity(
+                ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0 ? ColorUtils.TICKET_STROKE_OPACITY
+                    : 0.0F)
+            .setStrokeWidth(1.5F);
         PolygonOverlay overlay = new PolygonOverlay(
             FlameChunk.MODID,
             cell.getDimensionId(),

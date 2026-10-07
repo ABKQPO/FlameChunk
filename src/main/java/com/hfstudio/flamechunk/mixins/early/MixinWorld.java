@@ -3,6 +3,7 @@ package com.hfstudio.flamechunk.mixins.early;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
@@ -10,9 +11,7 @@ import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
@@ -21,7 +20,46 @@ import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 public abstract class MixinWorld {
 
     @Unique
-    private static final ThreadLocal<Deque<Long>> flamechunk$entityStarts = new ThreadLocal<>();
+    private static final ThreadLocal<Deque<Long>> flamechunk$neighborStarts = new ThreadLocal<>();
+
+    @Redirect(
+        method = "notifyBlockOfNeighborChange",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/block/Block;onNeighborBlockChange(Lnet/minecraft/world/World;IIILnet/minecraft/block/Block;)V"))
+    public void flamechunk$measureNeighborUpdate(Block block, World world, int x, int y, int z, Block neighbor) {
+        long start = world == null || world.isRemote ? 0L : PerformanceSampler.beginTiming();
+        Deque<Long> starts = null;
+        if (start != 0L) {
+            starts = flamechunk$neighborStarts.get();
+            if (starts == null) {
+                starts = new ArrayDeque<>();
+                flamechunk$neighborStarts.set(starts);
+            }
+            starts.push(starts.isEmpty() ? start : 0L);
+        }
+        try {
+            block.onNeighborBlockChange(world, x, y, z, neighbor);
+        } finally {
+            if (starts != null) {
+                long outerStart = starts.pop();
+                if (starts.isEmpty()) {
+                    flamechunk$neighborStarts.remove();
+                }
+                if (outerStart != 0L) {
+                    PerformanceSampler.recordBlockTiming(
+                        TickCategory.BLOCK_UPDATE,
+                        world,
+                        x,
+                        y,
+                        z,
+                        block.getClass()
+                            .getSimpleName(),
+                        System.nanoTime() - outerStart);
+                }
+            }
+        }
+    }
 
     @Redirect(
         method = "updateEntities",
@@ -33,46 +71,22 @@ public abstract class MixinWorld {
         } finally {
             if (start != 0L) {
                 World world = (World) (Object) this;
-                PerformanceSampler.record(
-                    TickCategory.BLOCK_ENTITY,
-                    world,
-                    tileEntity.xCoord >> 4,
-                    tileEntity.zCoord >> 4,
-                    System.nanoTime() - start);
+                PerformanceSampler.recordTileEntityTiming(world, tileEntity, System.nanoTime() - start);
             }
         }
     }
 
-    @Inject(method = "updateEntityWithOptionalForce", at = @At("HEAD"))
-    public void flamechunk$startEntity(Entity entity, boolean force, CallbackInfo callbackInfo) {
+    @Redirect(
+        method = "updateEntities",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/World;updateEntity(Lnet/minecraft/entity/Entity;)V"))
+    public void flamechunk$measureEntity(World world, Entity entity) {
         long start = PerformanceSampler.beginTiming();
-        if (start != 0L) {
-            Deque<Long> starts = flamechunk$entityStarts.get();
-            if (starts == null) {
-                starts = new ArrayDeque<>();
-                flamechunk$entityStarts.set(starts);
+        try {
+            world.updateEntity(entity);
+        } finally {
+            if (start != 0L && entity != null) {
+                PerformanceSampler.recordEntityTiming(world, entity, System.nanoTime() - start);
             }
-            starts.push(start);
-        }
-    }
-
-    @Inject(method = "updateEntityWithOptionalForce", at = @At("RETURN"))
-    public void flamechunk$finishEntity(Entity entity, boolean force, CallbackInfo callbackInfo) {
-        Deque<Long> starts = flamechunk$entityStarts.get();
-        if (starts == null || starts.isEmpty()) {
-            return;
-        }
-        long start = starts.pop();
-        if (starts.isEmpty()) {
-            flamechunk$entityStarts.remove();
-        }
-        if (entity != null) {
-            PerformanceSampler.record(
-                TickCategory.ENTITY,
-                (World) (Object) this,
-                entity.chunkCoordX,
-                entity.chunkCoordZ,
-                System.nanoTime() - start);
         }
     }
 }

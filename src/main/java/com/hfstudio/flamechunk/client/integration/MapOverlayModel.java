@@ -5,19 +5,26 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import net.minecraft.util.StatCollector;
+
+import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.render.ColorCalculator;
+import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.data.ChunkSnapshot;
 import com.hfstudio.flamechunk.common.data.DimensionSnapshot;
 import com.hfstudio.flamechunk.common.data.ScanSnapshot;
+import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
+import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.ChunkEntry;
+import com.hfstudio.flamechunk.common.tick.TickCategory;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import lombok.AccessLevel;
 import lombok.Getter;
 
 public class MapOverlayModel {
 
-    private static final float DEFAULT_BUDGET_MSPT = 50.0F;
     private static final ColorCalculator COLOR_CALCULATOR = new ColorCalculator();
 
     @Getter
@@ -43,34 +50,122 @@ public class MapOverlayModel {
     }
 
     public static MapOverlayModel from(ScanSnapshot snapshot) {
-        if (snapshot == null) {
-            return new MapOverlayModel(Collections.emptyList());
+        return from(snapshot, Collections.emptyList());
+    }
+
+    public static MapOverlayModel from(ScanSnapshot snapshot, List<WeakChunkSnapshot> weakSnapshots) {
+        if (weakSnapshots == null) {
+            throw new IllegalArgumentException("Weak chunk snapshots must not be null");
         }
         List<MapOverlayCell> cells = new ArrayList<>();
-        long sampledTicks = Math.max(1L, snapshot.getSampledTicks());
-        for (DimensionSnapshot dimension : snapshot.getDimensions()) {
-            for (ChunkSnapshot chunk : dimension.getChunks()) {
-                float mspt = chunk.calculateMspt(sampledTicks);
-                int color = COLOR_CALCULATOR.colorForMspt(mspt, DEFAULT_BUDGET_MSPT);
-                float opacity = 0.25F + 0.65F * COLOR_CALCULATOR.normalize(mspt, DEFAULT_BUDGET_MSPT);
-                cells.add(
-                    new MapOverlayCell(
-                        dimension.getDimensionId(),
-                        chunk.getChunkX(),
-                        chunk.getChunkZ(),
-                        color,
-                        opacity,
-                        String.format(Locale.ENGLISH, "%.3f ms/t", mspt),
-                        chunk.getNanos(),
-                        chunk.getCounts(),
-                        sampledTicks,
-                        chunk.getEntityCount(),
-                        chunk.getLoadLevel(),
-                        chunk.getTicketSourceCode(),
-                        chunk.getTicketSource()));
+        Int2ObjectOpenHashMap<Long2IntOpenHashMap> positions = new Int2ObjectOpenHashMap<>();
+        long sampledTicks = snapshot == null ? 1L : Math.max(1L, snapshot.getSampledTicks());
+        float colorBudget = ClientConfig.heatThresholdMspt;
+        if (snapshot != null && ClientConfig.relativeHeatColor) {
+            colorBudget = 0.0F;
+            for (DimensionSnapshot dimension : snapshot.getDimensions()) {
+                for (ChunkSnapshot chunk : dimension.getChunks()) {
+                    colorBudget = Math.max(colorBudget, chunk.calculateMspt(sampledTicks));
+                }
+            }
+            if (colorBudget <= 0.0F) {
+                colorBudget = ClientConfig.heatThresholdMspt;
+            }
+        }
+        if (snapshot != null) {
+            for (DimensionSnapshot dimension : snapshot.getDimensions()) {
+                for (ChunkSnapshot chunk : dimension.getChunks()) {
+                    float mspt = chunk.calculateMspt(sampledTicks);
+                    boolean weakIdle = chunk.isWeakLoaded() && mspt <= 0.0F;
+                    if (weakIdle && !ClientConfig.showWeakIdleChunks) {
+                        continue;
+                    }
+                    int color = weakIdle ? ColorUtils.rgb(ColorUtils.WEAK_IDLE)
+                        : COLOR_CALCULATOR.colorForMspt(mspt, colorBudget);
+                    float opacity = weakIdle ? ColorUtils.WEAK_IDLE_OPACITY
+                        : ColorUtils.heatOpacity(ClientConfig.heatAlpha, mspt, colorBudget);
+                    addCell(
+                        cells,
+                        positions,
+                        new MapOverlayCell(
+                            dimension.getDimensionId(),
+                            chunk.getChunkX(),
+                            chunk.getChunkZ(),
+                            color,
+                            opacity,
+                            String.format(Locale.ENGLISH, "%.3f ms/t", mspt),
+                            chunk.getNanos(),
+                            chunk.getCounts(),
+                            sampledTicks,
+                            chunk.getEntityCount(),
+                            chunk.getLoadLevel(),
+                            chunk.getTicketSourceCode(),
+                            chunk.getTicketSource(),
+                            false,
+                            Collections.emptyList(),
+                            chunk.getTypeTimings()));
+                }
+            }
+        }
+        for (WeakChunkSnapshot weakSnapshot : weakSnapshots) {
+            if (weakSnapshot == null) {
+                continue;
+            }
+            for (ChunkEntry chunk : weakSnapshot.getChunks()) {
+                MapOverlayCell weakCell = new MapOverlayCell(
+                    weakSnapshot.getDimensionId(),
+                    chunk.getChunkX(),
+                    chunk.getChunkZ(),
+                    ColorUtils.weakChunkColor(chunk.getEntityCount()),
+                    ClientConfig.heatAlpha,
+                    StatCollector.translateToLocalFormatted("flamechunk.overlay.weak", chunk.getEntityCount()),
+                    new long[TickCategory.COUNT],
+                    new int[TickCategory.COUNT],
+                    0L,
+                    chunk.getEntityCount(),
+                    (byte) 32,
+                    0,
+                    "",
+                    true,
+                    chunk.getEntityTypes(),
+                    Collections.emptyList());
+                Long2IntOpenHashMap dimensionPositions = positions.get(weakSnapshot.getDimensionId());
+                int cellIndex = dimensionPositions == null ? -1
+                    : dimensionPositions.get(key(chunk.getChunkX(), chunk.getChunkZ()));
+                if (cellIndex < 0) {
+                    addCell(cells, positions, weakCell);
+                } else {
+                    MapOverlayCell previous = cells.get(cellIndex);
+                    cells.set(
+                        cellIndex,
+                        previous.withWeakChunk(
+                            weakCell.getColor(),
+                            weakCell.getOpacity(),
+                            weakCell.getLabel(),
+                            weakCell.getEntityCount(),
+                            weakCell.getWeakEntityTypes()));
+                }
             }
         }
         return new MapOverlayModel(cells);
+    }
+
+    private static void addCell(List<MapOverlayCell> cells, Int2ObjectOpenHashMap<Long2IntOpenHashMap> positions,
+        MapOverlayCell cell) {
+        Long2IntOpenHashMap dimensionPositions = positions.get(cell.getDimensionId());
+        if (dimensionPositions == null) {
+            dimensionPositions = new Long2IntOpenHashMap();
+            dimensionPositions.defaultReturnValue(-1);
+            positions.put(cell.getDimensionId(), dimensionPositions);
+        }
+        long key = key(cell.getChunkX(), cell.getChunkZ());
+        int index = dimensionPositions.get(key);
+        if (index < 0) {
+            dimensionPositions.put(key, cells.size());
+            cells.add(cell);
+        } else {
+            cells.set(index, cell);
+        }
     }
 
     public MapOverlayCell find(int dimensionId, int chunkX, int chunkZ) {

@@ -13,11 +13,17 @@ public class SnapshotPacket implements IMessage {
     private int originalSize;
     private byte[] compressedBytes;
     @Getter
+    private boolean finalSnapshot = true;
+    @Getter
     private boolean valid = true;
 
     public SnapshotPacket() {}
 
     public SnapshotPacket(int originalSize, byte[] compressedBytes) {
+        this(originalSize, compressedBytes, true);
+    }
+
+    public SnapshotPacket(int originalSize, byte[] compressedBytes, boolean finalSnapshot) {
         if (originalSize < 0 || originalSize > ServerConfig.maxPacketBytes
             || compressedBytes == null
             || compressedBytes.length > ServerConfig.maxPacketBytes) {
@@ -25,6 +31,7 @@ public class SnapshotPacket implements IMessage {
         }
         this.originalSize = originalSize;
         this.compressedBytes = compressedBytes.clone();
+        this.finalSnapshot = finalSnapshot;
     }
 
     public byte[] getCompressedBytes() {
@@ -34,13 +41,15 @@ public class SnapshotPacket implements IMessage {
     @Override
     public void fromBytes(ByteBuf buffer) {
         valid = false;
-        if (buffer.readableBytes() < 12) {
+        if (buffer.readableBytes() < 13) {
             return;
         }
         int magic = buffer.readInt();
+        int finalSnapshotFlag = buffer.readUnsignedByte();
         int size = buffer.readInt();
         int length = buffer.readInt();
-        if (magic != NetworkHandler.PROTOCOL_MAGIC || size < 0
+        if (magic != NetworkHandler.PROTOCOL_MAGIC || finalSnapshotFlag > 1
+            || size < 0
             || size > ServerConfig.maxPacketBytes
             || length < 0
             || length > ServerConfig.maxPacketBytes
@@ -48,6 +57,7 @@ public class SnapshotPacket implements IMessage {
             return;
         }
         originalSize = size;
+        finalSnapshot = finalSnapshotFlag != 0;
         compressedBytes = new byte[length];
         buffer.readBytes(compressedBytes);
         valid = true;
@@ -60,6 +70,7 @@ public class SnapshotPacket implements IMessage {
             throw new IllegalArgumentException("Snapshot payload exceeds configured limit");
         }
         buffer.writeInt(NetworkHandler.PROTOCOL_MAGIC);
+        buffer.writeByte(finalSnapshot ? 1 : 0);
         buffer.writeInt(originalSize);
         buffer.writeInt(bytes.length);
         buffer.writeBytes(bytes);

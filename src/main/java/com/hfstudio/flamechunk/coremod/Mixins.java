@@ -6,7 +6,8 @@ import com.hfstudio.flamechunk.common.integration.Mods;
 
 public enum Mixins implements IMixins {
 
-    MINECRAFT(Side.COMMON, "MixinWorld", "MixinWorldServer", "MixinBlock", "MixinChunk"),
+    MINECRAFT(Side.COMMON, "MixinWorld", "MixinWorldServer", "MixinChunk", "MixinMinecraftServer",
+        "MixinForgeChunkManager", "ForgeChunkManagerAccessor", "MixinEventBus", "ASMEventHandlerAccessor"),
     XAERO_WORLD_MAP(new MixinBuilder("Xaero World Map heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.XaeroWorldMap)
         .addClientMixins("xaero.MixinGuiMap")),
@@ -15,6 +16,7 @@ public enum Mixins implements IMixins {
         .addClientMixins("xaero.MixinMinimapProcessor")),
     JOURNEYMAP_5(new MixinBuilder("JourneyMap 5 heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.JourneyMap5)
+        .setApplyIf(Mods.JourneyMap5::isModLoaded)
         .addClientMixins("journeymap.MixinFullscreen")),;
 
     private final MixinBuilder builder;

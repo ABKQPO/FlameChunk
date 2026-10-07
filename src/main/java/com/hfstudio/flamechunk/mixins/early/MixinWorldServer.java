@@ -28,7 +28,15 @@ public abstract class MixinWorldServer {
             block.updateTick(world, x, y, z, random);
         } finally {
             if (start != 0L) {
-                PerformanceSampler.record(TickCategory.RANDOM_TICK, world, x >> 4, z >> 4, System.nanoTime() - start);
+                PerformanceSampler.recordBlockTiming(
+                    TickCategory.RANDOM_TICK,
+                    world,
+                    x,
+                    y,
+                    z,
+                    block.getClass()
+                        .getSimpleName(),
+                    System.nanoTime() - start);
             }
         }
     }
@@ -44,8 +52,15 @@ public abstract class MixinWorldServer {
             block.updateTick(world, x, y, z, random);
         } finally {
             if (start != 0L) {
-                PerformanceSampler
-                    .record(TickCategory.SCHEDULED_TICK, world, x >> 4, z >> 4, System.nanoTime() - start);
+                PerformanceSampler.recordBlockTiming(
+                    TickCategory.SCHEDULED_TICK,
+                    world,
+                    x,
+                    y,
+                    z,
+                    block.getClass()
+                        .getSimpleName(),
+                    System.nanoTime() - start);
             }
         }
     }
@@ -62,7 +77,15 @@ public abstract class MixinWorldServer {
             return block.onBlockEventReceived(world, x, y, z, eventId, eventData);
         } finally {
             if (start != 0L) {
-                PerformanceSampler.record(TickCategory.BLOCK_EVENT, world, x >> 4, z >> 4, System.nanoTime() - start);
+                PerformanceSampler.recordBlockTiming(
+                    TickCategory.BLOCK_EVENT,
+                    world,
+                    x,
+                    y,
+                    z,
+                    block.getClass()
+                        .getSimpleName(),
+                    System.nanoTime() - start);
             }
         }
     }

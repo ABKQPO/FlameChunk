@@ -70,6 +70,10 @@ public enum Mods implements IMod, ITargetMod {
         return loaded;
     }
 
+    public static boolean hasMapIntegration() {
+        return JourneyMap.isModLoaded() || XaeroWorldMap.isModLoaded() || XaeroMinimap.isModLoaded();
+    }
+
     @Override
     public String getID() {
         return modid;
