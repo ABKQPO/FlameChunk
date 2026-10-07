@@ -1,8 +1,5 @@
 package com.hfstudio.flamechunk.server.command;
 
-import com.hfstudio.flamechunk.common.config.ServerConfig;
-import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
-
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -10,6 +7,9 @@ import net.minecraft.command.NumberInvalidException;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ChatComponentTranslation;
+
+import com.hfstudio.flamechunk.common.config.ServerConfig;
+import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
 public class FlameChunkCommand extends CommandBase {
 
@@ -37,10 +37,10 @@ public class FlameChunkCommand extends CommandBase {
             try {
                 seconds = Integer.parseInt(args[1]);
             } catch (NumberFormatException exception) {
-                throw new NumberInvalidException("flamechunk.command.invalid_duration", new Object[] { args[1] });
+                throw new NumberInvalidException("flamechunk.command.invalid_duration", args[1]);
             }
             if (seconds < 1 || seconds > 60) {
-                throw new NumberInvalidException("flamechunk.command.invalid_duration", new Object[] { seconds });
+                throw new NumberInvalidException("flamechunk.command.invalid_duration", seconds);
             }
         }
         if (PerformanceSampler.isActive()) {
@@ -49,7 +49,7 @@ public class FlameChunkCommand extends CommandBase {
         }
         EntityPlayerMP player = sender instanceof EntityPlayerMP ? (EntityPlayerMP) sender : null;
         boolean started = player == null ? PerformanceSampler.requestConsoleScan(sender, seconds)
-                : PerformanceSampler.requestScan(player, seconds);
+            : PerformanceSampler.requestScan(player, seconds);
         if (!started) {
             sender.addChatMessage(new ChatComponentTranslation("flamechunk.command.active"));
         }

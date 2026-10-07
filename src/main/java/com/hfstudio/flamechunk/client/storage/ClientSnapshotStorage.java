@@ -16,6 +16,13 @@ public class ClientSnapshotStorage {
         scanning = true;
     }
 
+    public synchronized void reset() {
+        snapshot = null;
+        elapsedTicks = 0L;
+        totalTicks = 0L;
+        scanning = false;
+    }
+
     public synchronized void updateProgress(long elapsed, long total) {
         if (total < 1L || elapsed < 0L || elapsed > total) {
             return;

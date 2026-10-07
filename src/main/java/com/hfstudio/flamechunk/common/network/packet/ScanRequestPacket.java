@@ -4,7 +4,9 @@ import com.hfstudio.flamechunk.common.network.NetworkHandler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import io.netty.buffer.ByteBuf;
+import lombok.Getter;
 
+@Getter
 public class ScanRequestPacket implements IMessage {
 
     private int seconds;
@@ -14,14 +16,6 @@ public class ScanRequestPacket implements IMessage {
 
     public ScanRequestPacket(int seconds) {
         this.seconds = seconds;
-    }
-
-    public int getSeconds() {
-        return seconds;
-    }
-
-    public boolean isValid() {
-        return valid;
     }
 
     @Override

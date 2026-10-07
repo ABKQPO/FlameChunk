@@ -2,20 +2,34 @@ package com.hfstudio.flamechunk.coremod;
 
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
+import com.hfstudio.flamechunk.common.integration.Mods;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
 public enum Mixins implements IMixins {
 
-    MINECRAFT(Side.COMMON, "MixinWorld", "MixinWorldServer", "MixinBlock"),
-    ;
+    MINECRAFT(Side.COMMON, "MixinWorld", "MixinWorldServer", "MixinBlock", "MixinChunk"),
+    XAERO_WORLD_MAP(new MixinBuilder("Xaero World Map heatmap overlay").setPhase(Phase.LATE)
+        .addRequiredMod(Mods.XaeroWorldMap)
+        .addClientMixins("xaero.MixinGuiMap")),
+    XAERO_MINIMAP(new MixinBuilder("Xaero Minimap heatmap overlay").setPhase(Phase.LATE)
+        .addRequiredMod(Mods.XaeroMinimap)
+        .addClientMixins("xaero.MixinMinimapProcessor")),
+    JOURNEYMAP_5(new MixinBuilder("JourneyMap 5 heatmap overlay").setPhase(Phase.LATE)
+        .addRequiredMod(Mods.JourneyMap5)
+        .addClientMixins("journeymap.MixinFullscreen")),;
 
-    @Getter
     private final MixinBuilder builder;
 
+    Mixins(MixinBuilder builder) {
+        this.builder = builder;
+    }
+
     Mixins(Side side, String... mixins) {
-        this.builder = new MixinBuilder().addSidedMixins(side, mixins).setPhase(Phase.EARLY);
+        this.builder = new MixinBuilder().addSidedMixins(side, mixins)
+            .setPhase(Phase.EARLY);
+    }
+
+    @Override
+    public MixinBuilder getBuilder() {
+        return builder;
     }
 }

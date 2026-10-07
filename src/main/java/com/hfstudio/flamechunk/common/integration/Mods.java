@@ -1,19 +1,28 @@
 package com.hfstudio.flamechunk.common.integration;
 
+import java.util.Locale;
+import java.util.function.Supplier;
+
+import org.jetbrains.annotations.NotNull;
+
 import com.gtnewhorizon.gtnhlib.util.data.IMod;
 import com.gtnewhorizon.gtnhmixins.builders.ITargetMod;
 import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
-import cpw.mods.fml.common.Loader;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.Locale;
-import java.util.function.Supplier;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.ModContainer;
 
 public enum Mods implements IMod, ITargetMod {
 
     // spotless:off
     NotEnoughItems("NotEnoughItems"),
     Angelica("angelica"),
+    JourneyMap("journeymap"),
+    JourneyMap5("journeymap", Mods::isJourneyMap5),
+    JourneyMap6("journeymap", Mods::isJourneyMap6),
+    XaeroWorldMap("XaeroWorldMap"),
+    XaeroMinimap("XaeroMinimap"),
+    ServerUtilities("serverutilities"),
     ;
     // spotless:on
 
@@ -29,6 +38,10 @@ public enum Mods implements IMod, ITargetMod {
 
     Mods(Supplier<Boolean> supplier) {
         this(null, supplier, null);
+    }
+
+    Mods(String modid, Supplier<Boolean> supplier) {
+        this(modid, supplier, null);
     }
 
     Mods(String modid, Supplier<Boolean> supplier, String coreModClass) {
@@ -65,5 +78,27 @@ public enum Mods implements IMod, ITargetMod {
     @Override
     public String getResourceLocation() {
         return resourceDomain;
+    }
+
+    private static boolean isJourneyMap5() {
+        return hasJourneyMapVersion("5.");
+    }
+
+    private static boolean isJourneyMap6() {
+        return hasJourneyMapVersion("6.");
+    }
+
+    private static boolean hasJourneyMapVersion(String prefix) {
+        if (!JourneyMap.isModLoaded()) {
+            return false;
+        }
+        ModContainer container = Loader.instance()
+            .getIndexedModList()
+            .get(JourneyMap.modid);
+        if (container == null || container.getVersion() == null) {
+            return false;
+        }
+        String version = container.getVersion();
+        return version.startsWith(prefix) || version.contains("-" + prefix);
     }
 }

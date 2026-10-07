@@ -4,16 +4,14 @@ import com.hfstudio.flamechunk.common.network.NetworkHandler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import io.netty.buffer.ByteBuf;
+import lombok.Getter;
 
+@Getter
 public class ClearSnapshotPacket implements IMessage {
 
     private boolean valid = true;
 
     public ClearSnapshotPacket() {}
-
-    public boolean isValid() {
-        return valid;
-    }
 
     @Override
     public void fromBytes(ByteBuf buffer) {

@@ -4,7 +4,9 @@ import com.hfstudio.flamechunk.common.network.NetworkHandler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import io.netty.buffer.ByteBuf;
+import lombok.Getter;
 
+@Getter
 public class ScanProgressPacket implements IMessage {
 
     private long elapsedTicks;
@@ -16,18 +18,6 @@ public class ScanProgressPacket implements IMessage {
     public ScanProgressPacket(long elapsedTicks, long totalTicks) {
         this.elapsedTicks = elapsedTicks;
         this.totalTicks = totalTicks;
-    }
-
-    public long getElapsedTicks() {
-        return elapsedTicks;
-    }
-
-    public long getTotalTicks() {
-        return totalTicks;
-    }
-
-    public boolean isValid() {
-        return valid;
     }
 
     @Override

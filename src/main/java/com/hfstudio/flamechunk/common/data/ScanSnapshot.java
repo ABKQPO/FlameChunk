@@ -1,8 +1,12 @@
 package com.hfstudio.flamechunk.common.data;
 
+import lombok.Getter;
+
 public class ScanSnapshot {
 
+    @Getter
     private final int durationSeconds;
+    @Getter
     private final long sampledTicks;
     private final DimensionSnapshot[] dimensions;
 
@@ -15,14 +19,6 @@ public class ScanSnapshot {
         this.dimensions = dimensions.clone();
     }
 
-    public int getDurationSeconds() {
-        return durationSeconds;
-    }
-
-    public long getSampledTicks() {
-        return sampledTicks;
-    }
-
     public DimensionSnapshot[] getDimensions() {
         return dimensions.clone();
     }
@@ -30,7 +26,8 @@ public class ScanSnapshot {
     public int getChunkCount() {
         int count = 0;
         for (DimensionSnapshot dimension : dimensions) {
-            count += dimension.getChunks().size();
+            count += dimension.getChunks()
+                .size();
         }
         return count;
     }

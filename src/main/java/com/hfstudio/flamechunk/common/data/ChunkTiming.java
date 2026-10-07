@@ -12,7 +12,7 @@ public class ChunkTiming {
             throw new IllegalArgumentException("Elapsed time cannot be negative");
         }
         int index = category.ordinal();
-        nanos[index] += elapsedNanos;
+        nanos[index] = saturatingAdd(nanos[index], elapsedNanos);
         if (counts[index] < Integer.MAX_VALUE) {
             counts[index]++;
         }
@@ -36,8 +36,10 @@ public class ChunkTiming {
 
     public long totalNanos() {
         long total = 0L;
-        for (long value : nanos) {
-            total += value;
+        for (int index = 0; index < nanos.length; index++) {
+            if (index != TickCategory.BLOCK_UPDATE.ordinal()) {
+                total = saturatingAdd(total, nanos[index]);
+            }
         }
         return total;
     }
@@ -47,5 +49,12 @@ public class ChunkTiming {
         System.arraycopy(nanos, 0, copy.nanos, 0, nanos.length);
         System.arraycopy(counts, 0, copy.counts, 0, counts.length);
         return copy;
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (Long.MAX_VALUE - left < right) {
+            return Long.MAX_VALUE;
+        }
+        return left + right;
     }
 }

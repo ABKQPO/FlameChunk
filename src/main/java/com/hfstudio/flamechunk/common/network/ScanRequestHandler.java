@@ -1,14 +1,15 @@
 package com.hfstudio.flamechunk.common.network;
 
-import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
+import net.minecraft.entity.player.EntityPlayerMP;
+
 import com.hfstudio.flamechunk.FlameChunk;
+import com.hfstudio.flamechunk.common.network.packet.ScanRequestPacket;
 import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import cpw.mods.fml.relauncher.Side;
-import net.minecraft.entity.player.EntityPlayerMP;
 
 public class ScanRequestHandler implements IMessageHandler<ScanRequestPacket, IMessage> {
 
@@ -22,7 +23,7 @@ public class ScanRequestHandler implements IMessageHandler<ScanRequestPacket, IM
             return null;
         }
         EntityPlayerMP player = context.getServerHandler().playerEntity;
-        PerformanceSampler.requestScan(player, message.getSeconds());
+        PerformanceSampler.enqueueScan(player, message.getSeconds());
         return null;
     }
 }

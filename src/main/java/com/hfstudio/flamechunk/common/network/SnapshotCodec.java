@@ -14,7 +14,7 @@ import com.hfstudio.flamechunk.common.data.ScanSnapshot;
 
 public class SnapshotCodec {
 
-    private static final int CODEC_VERSION = 1;
+    private static final int CODEC_VERSION = 2;
     private static final int CATEGORY_COUNT = 7;
 
     public byte[] encode(ScanSnapshot snapshot) {
@@ -25,14 +25,18 @@ public class SnapshotCodec {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             DataOutputStream output = new DataOutputStream(bytes);
             output.writeInt(CODEC_VERSION);
-            output.writeInt(snapshot.getDurationSeconds());
-            output.writeLong(snapshot.getSampledTicks());
+            int duration = snapshot.getDurationSeconds();
+            long ticks = snapshot.getSampledTicks();
+            validateScanWindow(duration, ticks);
+            output.writeInt(duration);
+            output.writeLong(ticks);
             DimensionSnapshot[] dimensions = snapshot.getDimensions();
             checkCount(dimensions.length, ServerConfig.maxDimensions, "dimension");
             output.writeInt(dimensions.length);
             for (DimensionSnapshot dimension : dimensions) {
                 output.writeInt(dimension.getDimensionId());
-                ChunkSnapshot[] chunks = dimension.getChunks().toArray(new ChunkSnapshot[0]);
+                ChunkSnapshot[] chunks = dimension.getChunks()
+                    .toArray(new ChunkSnapshot[0]);
                 checkCount(chunks.length, ServerConfig.maxChunksPerDimension, "chunk");
                 output.writeInt(chunks.length);
                 writeLongs(output, dimension.getGlobalNanos());
@@ -42,6 +46,9 @@ public class SnapshotCodec {
                     output.writeInt(chunk.getChunkZ());
                     writeLongs(output, chunk.getNanos());
                     writeInts(output, chunk.getCounts());
+                    output.writeInt(chunk.getEntityCount());
+                    output.writeByte(chunk.getLoadLevel());
+                    output.writeInt(chunk.getTicketSourceCode());
                 }
             }
             output.flush();
@@ -72,6 +79,7 @@ public class SnapshotCodec {
             }
             int duration = input.readInt();
             long ticks = input.readLong();
+            validateScanWindow(duration, ticks);
             int dimensionCount = readCount(input, ServerConfig.maxDimensions, "dimension");
             DimensionSnapshot[] dimensions = new DimensionSnapshot[dimensionCount];
             for (int dimensionIndex = 0; dimensionIndex < dimensionCount; dimensionIndex++) {
@@ -81,8 +89,25 @@ public class SnapshotCodec {
                 int[] globalCounts = readInts(input);
                 ChunkSnapshot[] chunks = new ChunkSnapshot[chunkCount];
                 for (int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
-                    chunks[chunkIndex] = new ChunkSnapshot(dimensionId, input.readInt(), input.readInt(), readLongs(input),
-                            readInts(input));
+                    int chunkX = input.readInt();
+                    int chunkZ = input.readInt();
+                    long[] nanos = readLongs(input);
+                    int[] counts = readInts(input);
+                    int entityCount = input.readInt();
+                    byte loadLevel = input.readByte();
+                    int ticketSourceCode = input.readInt();
+                    if (entityCount < 0 || ticketSourceCode < 0) {
+                        throw new IllegalArgumentException("Chunk metadata cannot be negative");
+                    }
+                    chunks[chunkIndex] = new ChunkSnapshot(
+                        dimensionId,
+                        chunkX,
+                        chunkZ,
+                        nanos,
+                        counts,
+                        entityCount,
+                        loadLevel,
+                        ticketSourceCode);
                 }
                 dimensions[dimensionIndex] = new DimensionSnapshot(dimensionId, chunks, globalNanos, globalCounts);
             }
@@ -102,6 +127,9 @@ public class SnapshotCodec {
             throw new IllegalArgumentException("Expected seven timing values");
         }
         for (long value : values) {
+            if (value < 0L) {
+                throw new IllegalArgumentException("Timing values cannot be negative");
+            }
             output.writeLong(value);
         }
     }
@@ -111,6 +139,9 @@ public class SnapshotCodec {
             throw new IllegalArgumentException("Expected seven count values");
         }
         for (int value : values) {
+            if (value < 0) {
+                throw new IllegalArgumentException("Timing counts cannot be negative");
+            }
             output.writeInt(value);
         }
     }
@@ -119,6 +150,9 @@ public class SnapshotCodec {
         long[] values = new long[CATEGORY_COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readLong();
+            if (values[index] < 0L) {
+                throw new IllegalArgumentException("Timing values cannot be negative");
+            }
         }
         return values;
     }
@@ -127,6 +161,9 @@ public class SnapshotCodec {
         int[] values = new int[CATEGORY_COUNT];
         for (int index = 0; index < values.length; index++) {
             values[index] = input.readInt();
+            if (values[index] < 0) {
+                throw new IllegalArgumentException("Timing counts cannot be negative");
+            }
         }
         return values;
     }
@@ -140,6 +177,12 @@ public class SnapshotCodec {
     private static void checkCount(int count, int maximum, String label) {
         if (count < 0 || count > maximum) {
             throw new IllegalArgumentException("Invalid " + label + " count: " + count);
+        }
+    }
+
+    private static void validateScanWindow(int duration, long ticks) {
+        if (duration < 1 || duration > 60 || ticks < 0L || ticks > duration * 20L) {
+            throw new IllegalArgumentException("Invalid scan window");
         }
     }
 }

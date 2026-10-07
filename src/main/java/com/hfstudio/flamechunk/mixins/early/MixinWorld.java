@@ -1,56 +1,78 @@
 package com.hfstudio.flamechunk.mixins.early;
 
-import com.hfstudio.flamechunk.common.tick.TickCategory;
-import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.world.chunk.Chunk;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.hfstudio.flamechunk.common.tick.TickCategory;
+import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 
 @Mixin(World.class)
 public abstract class MixinWorld {
 
-    private long flamechunk$randomStart;
-    private long flamechunk$entityStart;
-    private long flamechunk$updateStart;
+    @Unique
+    private static final ThreadLocal<Deque<Long>> flamechunk$entityStarts = new ThreadLocal<>();
 
-    @Inject(method = "func_147467_a", at = @At("HEAD"))
-    public void flamechunk$startRandom(int chunkX, int chunkZ, Chunk chunk, CallbackInfo callbackInfo) {
-        flamechunk$randomStart = System.nanoTime();
-    }
-
-    @Inject(method = "func_147467_a", at = @At("RETURN"))
-    public void flamechunk$finishRandom(int chunkX, int chunkZ, Chunk chunk, CallbackInfo callbackInfo) {
-        PerformanceSampler.record(TickCategory.RANDOM_TICK, (World) (Object) this, chunkX, chunkZ,
-                System.nanoTime() - flamechunk$randomStart);
-    }
-
-    @Inject(method = "updateEntities", at = @At("HEAD"))
-    public void flamechunk$startUpdates(CallbackInfo callbackInfo) {
-        flamechunk$updateStart = System.nanoTime();
-    }
-
-    @Inject(method = "updateEntities", at = @At("RETURN"))
-    public void flamechunk$finishUpdates(CallbackInfo callbackInfo) {
-        PerformanceSampler.recordGlobal(TickCategory.BLOCK_ENTITY, (World) (Object) this,
-                System.nanoTime() - flamechunk$updateStart);
+    @Redirect(
+        method = "updateEntities",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/tileentity/TileEntity;updateEntity()V"))
+    public void flamechunk$measureTileEntity(TileEntity tileEntity) {
+        long start = PerformanceSampler.beginTiming();
+        try {
+            tileEntity.updateEntity();
+        } finally {
+            if (start != 0L) {
+                World world = (World) (Object) this;
+                PerformanceSampler.record(
+                    TickCategory.BLOCK_ENTITY,
+                    world,
+                    tileEntity.xCoord >> 4,
+                    tileEntity.zCoord >> 4,
+                    System.nanoTime() - start);
+            }
+        }
     }
 
     @Inject(method = "updateEntityWithOptionalForce", at = @At("HEAD"))
     public void flamechunk$startEntity(Entity entity, boolean force, CallbackInfo callbackInfo) {
-        flamechunk$entityStart = System.nanoTime();
+        long start = PerformanceSampler.beginTiming();
+        if (start != 0L) {
+            Deque<Long> starts = flamechunk$entityStarts.get();
+            if (starts == null) {
+                starts = new ArrayDeque<>();
+                flamechunk$entityStarts.set(starts);
+            }
+            starts.push(start);
+        }
     }
 
     @Inject(method = "updateEntityWithOptionalForce", at = @At("RETURN"))
     public void flamechunk$finishEntity(Entity entity, boolean force, CallbackInfo callbackInfo) {
+        Deque<Long> starts = flamechunk$entityStarts.get();
+        if (starts == null || starts.isEmpty()) {
+            return;
+        }
+        long start = starts.pop();
+        if (starts.isEmpty()) {
+            flamechunk$entityStarts.remove();
+        }
         if (entity != null) {
-            PerformanceSampler.record(TickCategory.ENTITY, (World) (Object) this, entity.chunkCoordX,
-                    entity.chunkCoordZ, System.nanoTime() - flamechunk$entityStart);
+            PerformanceSampler.record(
+                TickCategory.ENTITY,
+                (World) (Object) this,
+                entity.chunkCoordX,
+                entity.chunkCoordZ,
+                System.nanoTime() - start);
         }
     }
 }

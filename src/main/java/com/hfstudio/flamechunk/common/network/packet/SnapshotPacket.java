@@ -5,34 +5,30 @@ import com.hfstudio.flamechunk.common.network.NetworkHandler;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import io.netty.buffer.ByteBuf;
+import lombok.Getter;
 
 public class SnapshotPacket implements IMessage {
 
+    @Getter
     private int originalSize;
     private byte[] compressedBytes;
+    @Getter
     private boolean valid = true;
 
     public SnapshotPacket() {}
 
     public SnapshotPacket(int originalSize, byte[] compressedBytes) {
-        if (originalSize < 0 || originalSize > ServerConfig.maxPacketBytes || compressedBytes == null
-                || compressedBytes.length > ServerConfig.maxPacketBytes) {
+        if (originalSize < 0 || originalSize > ServerConfig.maxPacketBytes
+            || compressedBytes == null
+            || compressedBytes.length > ServerConfig.maxPacketBytes) {
             throw new IllegalArgumentException("Invalid snapshot packet size");
         }
         this.originalSize = originalSize;
         this.compressedBytes = compressedBytes.clone();
     }
 
-    public int getOriginalSize() {
-        return originalSize;
-    }
-
     public byte[] getCompressedBytes() {
         return compressedBytes == null ? new byte[0] : compressedBytes.clone();
-    }
-
-    public boolean isValid() {
-        return valid;
     }
 
     @Override
@@ -44,8 +40,11 @@ public class SnapshotPacket implements IMessage {
         int magic = buffer.readInt();
         int size = buffer.readInt();
         int length = buffer.readInt();
-        if (magic != NetworkHandler.PROTOCOL_MAGIC || size < 0 || size > ServerConfig.maxPacketBytes || length < 0
-                || length > ServerConfig.maxPacketBytes || length != buffer.readableBytes()) {
+        if (magic != NetworkHandler.PROTOCOL_MAGIC || size < 0
+            || size > ServerConfig.maxPacketBytes
+            || length < 0
+            || length > ServerConfig.maxPacketBytes
+            || length != buffer.readableBytes()) {
             return;
         }
         originalSize = size;

@@ -4,5 +4,9 @@ repositories {
     maven {
         url = uri("https://jitpack.io")
     }
+    maven {
+        name = 'JourneyMap Maven'
+        url = 'https://maven.blamejared.com'
+    }
 }
 
