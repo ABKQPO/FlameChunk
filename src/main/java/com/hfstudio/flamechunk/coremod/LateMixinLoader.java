@@ -12,6 +12,10 @@ public class LateMixinLoader implements ILateMixinLoader {
 
     @Override
     public String getMixinConfig() {
+        int v = Runtime.version()
+                .feature();
+        if (v >= 21) return "mixins.flamechunk.late.j21.json";
+        if (v >= 17) return "mixins.flamechunk.late.j17.json";
         return "mixins.flamechunk.late.json";
     }
 
