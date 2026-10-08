@@ -78,6 +78,66 @@ public class XaeroOverlayRenderer {
         }
     }
 
+    /** Draws the overlay while Xaero's world-map transform is active. */
+    public static void renderWorldMap(double cameraX, double cameraZ, double scale, int dimensionId, int width,
+        int height) {
+        MapOverlayControls.requestWeakSnapshot();
+        if (!Double.isFinite(scale) || scale <= 0.0D || width <= 0 || height <= 0) {
+            return;
+        }
+        MapOverlayModel model = ClientMapOverlayState.get();
+        Long2ObjectOpenHashMap<List<MapOverlayCell>> tiles = model.cellsByTile.get(dimensionId);
+        if (tiles == null || tiles.isEmpty()) {
+            return;
+        }
+        int minChunkX = floorChunk(cameraX - width * 0.5D / scale) - 1;
+        int maxChunkX = floorChunk(cameraX + width * 0.5D / scale) + 1;
+        int minChunkZ = floorChunk(cameraZ - height * 0.5D / scale) - 1;
+        int maxChunkZ = floorChunk(cameraZ + height * 0.5D / scale) + 1;
+        int minTileX = Math.floorDiv(minChunkX, MapOverlayModel.TILE_CHUNKS);
+        int maxTileX = Math.floorDiv(maxChunkX, MapOverlayModel.TILE_CHUNKS);
+        int minTileZ = Math.floorDiv(minChunkZ, MapOverlayModel.TILE_CHUNKS);
+        int maxTileZ = Math.floorDiv(maxChunkZ, MapOverlayModel.TILE_CHUNKS);
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        try {
+            Tessellator tessellator = Tessellator.instance;
+            tessellator.startDrawingQuads();
+            for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
+                    List<MapOverlayCell> cells = tiles.get(MapOverlayModel.key(tileX, tileZ));
+                    if (cells == null) {
+                        continue;
+                    }
+                    for (MapOverlayCell cell : cells) {
+                        double minX = cell.getChunkX() * 16.0D - cameraX;
+                        double maxX = minX + 16.0D;
+                        double minZ = cell.getChunkZ() * 16.0D - cameraZ;
+                        double maxZ = minZ + 16.0D;
+                        if (maxX * scale < -width * 0.5D || minX * scale > width * 0.5D
+                            || maxZ * scale < -height * 0.5D || minZ * scale > height * 0.5D) {
+                            continue;
+                        }
+                        tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
+                        tessellator.addVertex(minX, minZ, 0.0D);
+                        tessellator.addVertex(maxX, minZ, 0.0D);
+                        tessellator.addVertex(maxX, maxZ, 0.0D);
+                        tessellator.addVertex(minX, maxZ, 0.0D);
+                        if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
+                            addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
+                        }
+                    }
+                }
+            }
+            tessellator.draw();
+        } finally {
+            GL11.glPopAttrib();
+        }
+    }
+
     public static void renderNavigatorSupplements(double cameraX, double cameraZ, double scale, int mouseX, int mouseY,
         int width, int height, int dimensionId) {
         if (!Double.isFinite(scale) || scale <= 0.0D || width <= 0 || height <= 0) {
@@ -105,10 +165,8 @@ public class XaeroOverlayRenderer {
         int mouseChunkZ = floorChunk(cameraZ + (mouseY - height * 0.5D) / scale);
         MapOverlayCell cell = hoveredIndicator == null ? model.find(dimensionId, mouseChunkX, mouseChunkZ)
             : hoveredIndicator;
-        if (hoveredIndicator != null || cell == null) {
-            int chunkX = cell == null ? mouseChunkX : cell.getChunkX();
-            int chunkZ = cell == null ? mouseChunkZ : cell.getChunkZ();
-            MapOverlayTooltip.draw(mouseX, mouseY, cell, chunkX, chunkZ, width, height);
+        if (cell != null) {
+            MapOverlayTooltip.draw(mouseX, mouseY, cell, cell.getChunkX(), cell.getChunkZ(), width, height);
         }
     }
 

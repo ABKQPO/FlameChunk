@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
@@ -263,10 +264,16 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
         @Override
         public void getTooltip(List<String> tooltip) {
+            // FlameChunk draws its own bounded tooltip for every map integration.
+        }
+
+        @Override
+        public void drawCustomTooltip(FontRenderer fontRenderer, int mouseX, int mouseY, int displayWidth,
+            int displayHeight) {
             MapOverlayCell cell = location.getCell();
-            if (cell != null) {
-                tooltip.addAll(MapOverlayTooltip.lines(cell));
-            }
+            int chunkX = location.getChunkX();
+            int chunkZ = location.getChunkZ();
+            MapOverlayTooltip.draw(mouseX, mouseY, cell, chunkX, chunkZ, displayWidth, displayHeight);
         }
 
         @Override

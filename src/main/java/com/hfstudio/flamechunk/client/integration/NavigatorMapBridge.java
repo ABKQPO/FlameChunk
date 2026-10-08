@@ -8,8 +8,11 @@ import cpw.mods.fml.common.Optional;
 
 public class NavigatorMapBridge {
 
+    private static boolean initialized;
+
     public static void initialize() {
-        if (Mods.Navigator.isModLoaded()) {
+        if (!initialized && Mods.Navigator.isModLoaded()) {
+            initialized = true;
             registerNavigatorLayer();
         }
     }
@@ -63,7 +66,7 @@ public class NavigatorMapBridge {
 
     @Optional.Method(modid = "navigator")
     public static boolean navigatorOwnsXaeroMinimap() {
-        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroWorldMap);
+        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroMiniMap);
     }
 
     @Optional.Method(modid = "navigator")

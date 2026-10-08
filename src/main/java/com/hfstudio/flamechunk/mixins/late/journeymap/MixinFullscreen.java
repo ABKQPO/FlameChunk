@@ -3,6 +3,7 @@ package com.hfstudio.flamechunk.mixins.late.journeymap;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.util.StatCollector;
 
+import org.lwjgl.input.Mouse;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -12,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.integration.JourneyMap5OverlayRenderer;
 import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
@@ -26,6 +28,13 @@ import journeymap.client.ui.fullscreen.layer.LayerDelegate;
 
 @Mixin(value = Fullscreen.class, remap = false)
 public abstract class MixinFullscreen {
+
+    @Unique
+    private int flamechunk$draggedButtonId = -1;
+    @Unique
+    private int flamechunk$dragOffsetX;
+    @Unique
+    private int flamechunk$dragOffsetY;
 
     @Shadow(remap = false)
     @Final
@@ -48,12 +57,15 @@ public abstract class MixinFullscreen {
     private void flamechunk$updateScanControl(int width, int height, float f, CallbackInfo callbackInfo) {
         Fullscreen screen = (Fullscreen) (Object) this;
         MapOverlayControls.updateScanButton(screen.getButtonList(), MapControlIds.JOURNEYMAP_SCAN);
+        flamechunk$updateButtonDrag(screen, width, height);
     }
 
     @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
     private void flamechunk$renderScanProgress(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
         Fullscreen screen = (Fullscreen) (Object) this;
-        MapScanProgressRenderer.render(6, screen.height - 48, 6, screen.height - 24, 76, 20);
+        int scanX = JourneyMap5OverlayRenderer.buttonX(screen, 0);
+        int scanY = JourneyMap5OverlayRenderer.buttonY(screen, 0);
+        MapScanProgressRenderer.render(scanX, scanY - 24, scanX, scanY, 76, 20);
         if ((chat == null || chat.isHidden()) && !flamechunk$hasWaypointHover()) {
             JourneyMap5OverlayRenderer.renderTooltip(screen, gridRenderer, mx, my);
         }
@@ -71,25 +83,63 @@ public abstract class MixinFullscreen {
 
     @Inject(method = "initGui", at = @At("RETURN"), remap = true)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
-        Fullscreen screen = (Fullscreen) (Object) this;
-        screen.getButtonList()
-            .add(
-                new GuiButton(
-                    MapControlIds.JOURNEYMAP_SCAN,
-                    6,
-                    screen.height - 24,
-                    76,
-                    20,
-                    StatCollector.translateToLocal("flamechunk.client.scan")));
-        screen.getButtonList()
-            .add(
-                new GuiButton(
-                    MapControlIds.JOURNEYMAP_CLEAR,
-                    86,
-                    screen.height - 24,
-                    76,
-                    20,
-                    StatCollector.translateToLocal("flamechunk.client.clear")));
+        flamechunk$ensureControls((Fullscreen) (Object) this);
+    }
+
+    @Inject(method = "layoutButtons", at = @At("RETURN"), remap = false)
+    private void flamechunk$restoreControls(CallbackInfo callbackInfo) {
+        flamechunk$ensureControls((Fullscreen) (Object) this);
+    }
+
+    @Unique
+    private void flamechunk$ensureControls(Fullscreen screen) {
+        boolean scanPresent = false;
+        boolean clearPresent = false;
+        for (Object element : screen.getButtonList()) {
+            if (!(element instanceof GuiButton button)) {
+                continue;
+            }
+            scanPresent |= button.id == MapControlIds.JOURNEYMAP_SCAN;
+            clearPresent |= button.id == MapControlIds.JOURNEYMAP_CLEAR;
+        }
+        if (!scanPresent) {
+            screen.getButtonList()
+                .add(
+                    new GuiButton(
+                        MapControlIds.JOURNEYMAP_SCAN,
+                        JourneyMap5OverlayRenderer.buttonX(screen, 0),
+                        JourneyMap5OverlayRenderer.buttonY(screen, 0),
+                        76,
+                        20,
+                        StatCollector.translateToLocal("flamechunk.client.scan")));
+        }
+        if (!clearPresent) {
+            screen.getButtonList()
+                .add(
+                    new GuiButton(
+                        MapControlIds.JOURNEYMAP_CLEAR,
+                        JourneyMap5OverlayRenderer.buttonX(screen, 1),
+                        JourneyMap5OverlayRenderer.buttonY(screen, 1),
+                        76,
+                        20,
+                        StatCollector.translateToLocal("flamechunk.client.clear")));
+        }
+    }
+
+    @Unique
+    private void flamechunk$positionControls(Fullscreen screen) {
+        for (Object element : screen.getButtonList()) {
+            if (!(element instanceof GuiButton button)) {
+                continue;
+            }
+            if (button.id == MapControlIds.JOURNEYMAP_SCAN) {
+                button.xPosition = JourneyMap5OverlayRenderer.buttonX(screen, 0);
+                button.yPosition = JourneyMap5OverlayRenderer.buttonY(screen, 0);
+            } else if (button.id == MapControlIds.JOURNEYMAP_CLEAR) {
+                button.xPosition = JourneyMap5OverlayRenderer.buttonX(screen, 1);
+                button.yPosition = JourneyMap5OverlayRenderer.buttonY(screen, 1);
+            }
+        }
     }
 
     @Inject(method = "actionPerformed", at = @At("HEAD"), remap = true)
@@ -106,11 +156,58 @@ public abstract class MixinFullscreen {
 
     @Inject(method = "mouseClicked", at = @At("RETURN"), remap = true)
     private void flamechunk$handleMapContextAction(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
-        if ((chat != null && !chat.isHidden()) || flamechunk$hasWaypointHover()) {
+        if (flamechunk$draggedButtonId >= 0 || (chat != null && !chat.isHidden()) || flamechunk$hasWaypointHover()) {
             return;
         }
         JourneyMap5OverlayRenderer
             .handleRightClick((Fullscreen) (Object) this, gridRenderer, mouseX, mouseY, mouseButton);
+    }
+
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, remap = true)
+    private void flamechunk$beginButtonDrag(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
+        if (mouseButton != 1) {
+            return;
+        }
+        Fullscreen screen = (Fullscreen) (Object) this;
+        for (Object element : screen.getButtonList()) {
+            if (!(element instanceof GuiButton button)
+                || (button.id != MapControlIds.JOURNEYMAP_SCAN && button.id != MapControlIds.JOURNEYMAP_CLEAR)
+                || !button.visible
+                || mouseX < button.xPosition
+                || mouseY < button.yPosition
+                || mouseX >= button.xPosition + button.width
+                || mouseY >= button.yPosition + button.height) {
+                continue;
+            }
+            flamechunk$draggedButtonId = button.id;
+            flamechunk$dragOffsetX = mouseX - button.xPosition;
+            flamechunk$dragOffsetY = mouseY - button.yPosition;
+            callbackInfo.cancel();
+            return;
+        }
+    }
+
+    @Unique
+    private void flamechunk$updateButtonDrag(Fullscreen screen, int mouseX, int mouseY) {
+        if (flamechunk$draggedButtonId < 0) {
+            return;
+        }
+        if (!Mouse.isButtonDown(1)) {
+            ClientConfig.save();
+            flamechunk$draggedButtonId = -1;
+            return;
+        }
+        int x = JourneyMap5OverlayRenderer.boundedButtonX(screen.width, mouseX - flamechunk$dragOffsetX, 76);
+        int y = JourneyMap5OverlayRenderer
+            .boundedButtonY(screen.height, screen.height - (mouseY - flamechunk$dragOffsetY) - 20, 20);
+        if (flamechunk$draggedButtonId == MapControlIds.JOURNEYMAP_SCAN) {
+            ClientConfig.journeyMap5ButtonX = x;
+            ClientConfig.journeyMap5ButtonBottom = screen.height - y - 20;
+        } else {
+            ClientConfig.journeyMap5ClearButtonX = x;
+            ClientConfig.journeyMap5ClearButtonBottom = screen.height - y - 20;
+        }
+        flamechunk$positionControls(screen);
     }
 
     @Redirect(

@@ -19,7 +19,7 @@ import com.hfstudio.flamechunk.common.tick.TickCategory;
 public class MapOverlayTooltip {
 
     public static final int PADDING = 3;
-    public static final int OFFSET = 8;
+    public static final int OFFSET = 12;
     public static final int MARGIN = 2;
     public static MapOverlayCell cachedCell;
     public static int cachedChunkX;
@@ -67,12 +67,12 @@ public class MapOverlayTooltip {
         int boxWidth = textWidth + PADDING * 2;
         int boxHeight = lines.size() * lineHeight + PADDING * 2;
         int x = mouseX + OFFSET;
-        int y = mouseY + OFFSET;
+        int y = mouseY - OFFSET - boxHeight;
         if (x + boxWidth > width - MARGIN) {
             x = mouseX - OFFSET - boxWidth;
         }
-        if (y + boxHeight > height - MARGIN) {
-            y = mouseY - OFFSET - boxHeight;
+        if (y < MARGIN) {
+            y = mouseY + OFFSET;
         }
         x = Math.max(MARGIN, Math.min(x, width - MARGIN - boxWidth));
         y = Math.max(MARGIN, Math.min(y, height - MARGIN - boxHeight));

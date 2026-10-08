@@ -267,7 +267,7 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
             .setStrokeWidth(1.5F);
         overlay.setShapeProperties(properties);
         overlay.setOverlayGroupName(GROUP_NAME)
-            .setTitle(String.join("\n", MapOverlayTooltip.lines(cell)))
+            .setTitle(null)
             .setLabel(cell.getLabel())
             .setActiveUIs(Context.UI.Fullscreen, Context.UI.Minimap)
             .setDisplayOrder(100)

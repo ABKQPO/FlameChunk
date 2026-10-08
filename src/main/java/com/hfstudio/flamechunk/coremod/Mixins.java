@@ -16,7 +16,7 @@ public enum Mixins implements IMixins {
     XAERO_MINIMAP(new MixinBuilder("Xaero Minimap heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.XaeroMinimap)
         .setApplyIf(Mods.XaeroMinimap::isModLoaded)
-        .addClientMixins("xaero.MixinMinimapProcessor")),
+        .addClientMixins("xaero.MixinMinimapProcessor", "xaero.MixinLwjgl3ifyCompat")),
     JOURNEYMAP_5(new MixinBuilder("JourneyMap 5 heatmap overlay").setPhase(Phase.LATE)
         .addRequiredMod(Mods.JourneyMap5)
         .setApplyIf(Mods.JourneyMap5::isModLoaded)

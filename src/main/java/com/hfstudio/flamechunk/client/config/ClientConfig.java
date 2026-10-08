@@ -92,6 +92,46 @@ public class ClientConfig {
     @Config.DefaultBoolean(false)
     public static boolean tooltipCategoryUnits;
 
+    @Config.Comment("Horizontal position of the JourneyMap 5 scan button, measured from the left edge")
+    @Config.DefaultInt(6)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap5ButtonX = 6;
+
+    @Config.Comment("Distance of the JourneyMap 5 scan button from the bottom edge")
+    @Config.DefaultInt(4)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap5ButtonBottom = 4;
+
+    @Config.Comment("Horizontal position of the JourneyMap 5 clear button, measured from the left edge")
+    @Config.DefaultInt(86)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap5ClearButtonX = 86;
+
+    @Config.Comment("Distance of the JourneyMap 5 clear button from the bottom edge")
+    @Config.DefaultInt(4)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap5ClearButtonBottom = 4;
+
+    @Config.Comment("Horizontal position of the JourneyMap 6 scan button, measured from the left edge")
+    @Config.DefaultInt(6)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap6ButtonX = 6;
+
+    @Config.Comment("Distance of the JourneyMap 6 scan button from the bottom edge")
+    @Config.DefaultInt(24)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap6ButtonBottom = 24;
+
+    @Config.Comment("Horizontal position of the JourneyMap 6 clear button, measured from the left edge")
+    @Config.DefaultInt(86)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap6ClearButtonX = 86;
+
+    @Config.Comment("Distance of the JourneyMap 6 clear button from the bottom edge")
+    @Config.DefaultInt(24)
+    @Config.RangeInt(min = 0, max = 4096)
+    public static int journeyMap6ClearButtonBottom = 24;
+
     @Config.Comment("Where completed scan reports are displayed")
     @Config.DefaultEnum("SCREEN")
     public static ReportOutputMode reportOutputMode = ReportOutputMode.SCREEN;
@@ -124,6 +164,14 @@ public class ClientConfig {
         tooltipTicketSource = true;
         tooltipCategoryNamesShort = false;
         tooltipCategoryUnits = false;
+        journeyMap5ButtonX = 6;
+        journeyMap5ButtonBottom = 4;
+        journeyMap5ClearButtonX = 86;
+        journeyMap5ClearButtonBottom = 4;
+        journeyMap6ButtonX = 6;
+        journeyMap6ButtonBottom = 24;
+        journeyMap6ClearButtonX = 86;
+        journeyMap6ClearButtonBottom = 24;
         reportOutputMode = ReportOutputMode.SCREEN;
         tooltipCategories = new TooltipCategories();
     }

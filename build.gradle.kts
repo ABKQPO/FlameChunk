@@ -35,9 +35,9 @@ runConfigs.forEach { (taskName, path) ->
 }
 
 val mapClientProfiles = mapOf(
-    "runClient25Jm5" to ("run/client_new" to "journeyMap5Launch"),
-    "runClient25Jm6" to ("run/client_new" to "journeyMap6Launch"),
-    "runClient25Xaero" to ("run/client_new" to "xaeroLaunch")
+    "runClient25Jm5" to ("run/client25_jm5" to "journeyMap5Launch"),
+    "runClient25Jm6" to ("run/client25_jm6" to "journeyMap6Launch"),
+    "runClient25Xaero" to ("run/client25_xaero" to "xaeroLaunch")
 )
 val requestedMapClientProfileName = gradle.startParameter.taskNames
     .map { it.substringAfterLast(':') }

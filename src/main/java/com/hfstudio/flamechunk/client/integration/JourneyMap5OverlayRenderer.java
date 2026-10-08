@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiButton;
 
 import org.lwjgl.input.Mouse;
 
+import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
 
 import cpw.mods.fml.common.Optional;
@@ -115,13 +116,44 @@ public class JourneyMap5OverlayRenderer {
             return;
         }
         Minecraft minecraft = Minecraft.getMinecraft();
-        BlockCoordIntPair block = renderer
-            .getBlockUnderMouse(Mouse.getX(), Mouse.getY(), minecraft.displayWidth, minecraft.displayHeight);
+        BlockCoordIntPair block = renderer.getBlockUnderMouse(
+            toDisplayX(mouseX, screen.width, minecraft.displayWidth),
+            toDisplayY(mouseY, screen.height, minecraft.displayHeight),
+            minecraft.displayWidth,
+            minecraft.displayHeight);
         int chunkX = block.x >> 4;
         int chunkZ = block.z >> 4;
         MapOverlayCell cell = ClientMapOverlayState.get()
             .find(dimensionId, chunkX, chunkZ);
         MapOverlayTooltip.draw(mouseX, mouseY, cell, chunkX, chunkZ, screen.width, screen.height);
+    }
+
+    @Optional.Method(modid = "journeymap")
+    public static int buttonX(Fullscreen screen, int index) {
+        int x = index == 0 ? ClientConfig.journeyMap5ButtonX : ClientConfig.journeyMap5ClearButtonX;
+        return boundedButtonX(screen.width, x, 76);
+    }
+
+    @Optional.Method(modid = "journeymap")
+    public static int buttonY(Fullscreen screen, int index) {
+        int bottom = index == 0 ? ClientConfig.journeyMap5ButtonBottom : ClientConfig.journeyMap5ClearButtonBottom;
+        return boundedButtonY(screen.height, bottom, 20);
+    }
+
+    public static int boundedButtonX(int screenWidth, int x, int buttonWidth) {
+        return Math.max(0, Math.min(x, Math.max(0, screenWidth - buttonWidth)));
+    }
+
+    public static int boundedButtonY(int screenHeight, int bottom, int buttonHeight) {
+        return Math.max(0, Math.min(screenHeight - bottom - buttonHeight, Math.max(0, screenHeight - buttonHeight)));
+    }
+
+    public static int toDisplayX(int mouseX, int guiWidth, int displayWidth) {
+        return guiWidth <= 0 ? 0 : mouseX * displayWidth / guiWidth;
+    }
+
+    public static int toDisplayY(int mouseY, int guiHeight, int displayHeight) {
+        return guiHeight <= 0 ? 0 : (guiHeight - mouseY - 1) * displayHeight / guiHeight;
     }
 
     @Optional.Method(modid = "journeymap")

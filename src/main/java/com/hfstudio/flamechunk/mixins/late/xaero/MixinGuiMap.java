@@ -7,7 +7,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
-import net.minecraft.util.StatCollector;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,23 +20,27 @@ import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
 import com.hfstudio.flamechunk.client.integration.MapScanProgressRenderer;
 import com.hfstudio.flamechunk.client.integration.NavigatorMapBridge;
+import com.hfstudio.flamechunk.client.integration.XaeroRightClickOption;
 import com.hfstudio.flamechunk.client.integration.XaeroOverlayRenderer;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
 
+import xaero.map.gui.CursorBox;
 import xaero.map.gui.GuiDropDown;
+import xaero.map.gui.GuiTexturedButton;
 import xaero.map.gui.GuiMap;
 import xaero.map.gui.RightClickOption;
 import xaero.map.gui.ScreenBase;
+import xaero.map.WorldMap;
 
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class MixinGuiMap extends ScreenBase {
 
     @Unique
-    private static final int FLAMECHUNK_CONTROL_X = 4;
+    private static final int FLAMECHUNK_BUTTON_SIZE = 20;
     @Unique
-    private static final int FLAMECHUNK_SCAN_Y = 34;
+    private static final int FLAMECHUNK_SCAN_Y = 80;
     @Unique
-    private static final int FLAMECHUNK_CLEAR_Y = 56;
+    private static final int FLAMECHUNK_CLEAR_Y = 100;
 
     @Shadow(remap = false)
     private List<GuiDropDown> dropdowns;
@@ -73,21 +76,33 @@ public abstract class MixinGuiMap extends ScreenBase {
     @Inject(method = "initGui", at = @At("RETURN"), remap = true)
     private void flamechunk$addControls(CallbackInfo callbackInfo) {
         addGuiButton(
-            new GuiButton(
+            new GuiTexturedButton(
                 MapControlIds.XAERO_SCAN,
-                FLAMECHUNK_CONTROL_X,
-                FLAMECHUNK_SCAN_Y,
-                80,
-                20,
-                StatCollector.translateToLocal("flamechunk.client.scan")));
+                width - FLAMECHUNK_BUTTON_SIZE,
+                height - FLAMECHUNK_SCAN_Y,
+                FLAMECHUNK_BUTTON_SIZE,
+                FLAMECHUNK_BUTTON_SIZE,
+                113,
+                0,
+                16,
+                16,
+                WorldMap.guiTextures,
+                ignored -> MapOverlayControls.toggleScan(),
+                new CursorBox("flamechunk.client.scan")));
         addGuiButton(
-            new GuiButton(
+            new GuiTexturedButton(
                 MapControlIds.XAERO_CLEAR,
-                FLAMECHUNK_CONTROL_X,
-                FLAMECHUNK_CLEAR_Y,
-                80,
-                20,
-                StatCollector.translateToLocal("flamechunk.client.clear")));
+                width - FLAMECHUNK_BUTTON_SIZE,
+                height - FLAMECHUNK_CLEAR_Y,
+                FLAMECHUNK_BUTTON_SIZE,
+                FLAMECHUNK_BUTTON_SIZE,
+                133,
+                0,
+                16,
+                16,
+                WorldMap.guiTextures,
+                ignored -> MapOverlayControls.clear(),
+                new CursorBox("flamechunk.client.clear")));
     }
 
     @Inject(method = "actionPerformed", at = @At("HEAD"), remap = true)
@@ -112,9 +127,10 @@ public abstract class MixinGuiMap extends ScreenBase {
         method = "drawScreen",
         at = @At(
             value = "INVOKE",
-            target = "Lxaero/map/gui/ScreenBase;drawScreen(IIF)V",
+            target = "Lxaero/map/mods/SupportMods;minimap()Z",
+            ordinal = 1,
             shift = At.Shift.BEFORE,
-            remap = true),
+            remap = false),
         remap = true)
     private void flamechunk$renderHeatmap(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {
@@ -162,20 +178,18 @@ public abstract class MixinGuiMap extends ScreenBase {
                         scale,
                         tooltipMouseX,
                         tooltipMouseY,
-                        screen.width,
-                        screen.height,
-                        dimensionId);
+                    minecraft.displayWidth,
+                    minecraft.displayHeight,
+                    dimensionId);
                 }
             } else {
-                XaeroOverlayRenderer.render(
+                XaeroOverlayRenderer.renderWorldMap(
                     cameraX,
                     cameraZ,
                     scale,
-                    tooltipMouseX,
-                    tooltipMouseY,
+                    dimensionId,
                     screen.width,
-                    screen.height,
-                    dimensionId);
+                    screen.height);
             }
         }
     }
@@ -183,8 +197,13 @@ public abstract class MixinGuiMap extends ScreenBase {
     @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
     private void flamechunk$renderScanProgress(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {
-        MapScanProgressRenderer
-            .render(FLAMECHUNK_CONTROL_X, FLAMECHUNK_CLEAR_Y + 22, FLAMECHUNK_CONTROL_X, FLAMECHUNK_SCAN_Y, 80, 20);
+        MapScanProgressRenderer.render(
+            Math.max(0, this.width - 190),
+            Math.max(2, this.height - 132),
+            this.width - FLAMECHUNK_BUTTON_SIZE,
+            this.height - FLAMECHUNK_SCAN_Y,
+            FLAMECHUNK_BUTTON_SIZE,
+            FLAMECHUNK_BUTTON_SIZE);
     }
 
     @Inject(method = "getRightClickOptions", at = @At("RETURN"), remap = false)
@@ -210,26 +229,52 @@ public abstract class MixinGuiMap extends ScreenBase {
         int chunkZ = rightClickZ >> 4;
 
         ArrayList<RightClickOption> options = callbackInfo.getReturnValue();
+        options.add(
+            new XaeroRightClickOption(
+                "flamechunk.client.map.scan",
+                options.size(),
+                map,
+                XaeroRightClickOption.ACTION_SCAN,
+                dimensionId,
+                0,
+                0,
+                null));
+        options.add(
+            new XaeroRightClickOption(
+                "flamechunk.client.map.clear",
+                options.size(),
+                map,
+                XaeroRightClickOption.ACTION_CLEAR,
+                dimensionId,
+                0,
+                0,
+                null));
         List<EntityTypeCount> types = MapOverlayControls.weakClearTargets(dimensionId, chunkX, chunkZ);
 
-        for (final EntityTypeCount type : types) {
-            options.add(new RightClickOption("flamechunk.client.map.weakclear.type", options.size(), map) {
-
-                @Override
-                public void onAction(GuiScreen screen) {
-                    MapOverlayControls.confirmWeakClear(screen, dimensionId, chunkX, chunkZ, type.getTypeId());
-                }
-            }.setNameFormatArgs(type.getTypeId(), type.getCount()));
+        for (EntityTypeCount type : types) {
+            options.add(
+                new XaeroRightClickOption(
+                    "flamechunk.client.map.weakclear.type",
+                    options.size(),
+                    map,
+                    XaeroRightClickOption.ACTION_WEAK_CLEAR,
+                    dimensionId,
+                    chunkX,
+                    chunkZ,
+                    type.getTypeId()).setNameFormatArgs(type.getTypeId(), type.getCount()));
         }
 
         if (MapOverlayControls.hasLoaderControlTarget(dimensionId, chunkX, chunkZ)) {
-            options.add(new RightClickOption("flamechunk.client.map.loader.toggle", options.size(), map) {
-
-                @Override
-                public void onAction(GuiScreen screen) {
-                    MapOverlayControls.confirmLoaderToggle(screen, dimensionId, chunkX, chunkZ);
-                }
-            });
+            options.add(
+                new XaeroRightClickOption(
+                    "flamechunk.client.map.loader.toggle",
+                    options.size(),
+                    map,
+                    XaeroRightClickOption.ACTION_LOADER,
+                    dimensionId,
+                    chunkX,
+                    chunkZ,
+                    null));
         }
     }
 }
