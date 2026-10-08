@@ -31,44 +31,48 @@ public class JourneyMap5OverlayRenderer {
             if (!NavigatorMapBridge.isJourneyMapLayerActive()) {
                 return;
             }
-            Fullscreen screen = (Fullscreen) minecraft.currentScreen;
-            if (screen == null) {
+            if (NavigatorMapBridge.hasJourneyMapRenderSteps()) {
+                Fullscreen screen = (Fullscreen) minecraft.currentScreen;
+                if (screen == null) {
+                    return;
+                }
+                for (int index = 0; index < screen.getButtonList()
+                    .size(); index++) {
+                    if (!(screen.getButtonList()
+                        .get(index) instanceof GuiButton button)) {
+                        continue;
+                    }
+                    if (button.visible && mouseX >= button.xPosition
+                        && mouseY >= button.yPosition
+                        && mouseX < button.xPosition + button.width
+                        && mouseY < button.yPosition + button.height) {
+                        mouseX = -1;
+                        mouseY = -1;
+                        break;
+                    }
+                }
+                XaeroOverlayRenderer.renderNavigatorSupplements(
+                    cameraX,
+                    cameraZ,
+                    scale,
+                    mouseX,
+                    mouseY,
+                    screen.width,
+                    screen.height,
+                    dimensionId);
                 return;
             }
-            for (int index = 0; index < screen.getButtonList()
-                .size(); index++) {
-                if (!(screen.getButtonList()
-                    .get(index) instanceof GuiButton button)) {
-                    continue;
-                }
-                if (button.visible && mouseX >= button.xPosition
-                    && mouseY >= button.yPosition
-                    && mouseX < button.xPosition + button.width
-                    && mouseY < button.yPosition + button.height) {
-                    mouseX = -1;
-                    mouseY = -1;
-                    break;
-                }
-            }
-            XaeroOverlayRenderer.renderNavigatorSupplements(
-                cameraX,
-                cameraZ,
-                scale,
-                mouseX,
-                mouseY,
-                screen.width,
-                screen.height,
-                dimensionId);
-        } else {
-            XaeroOverlayRenderer
-                .render(cameraX, cameraZ, scale, -1, -1, minecraft.displayWidth, minecraft.displayHeight, dimensionId);
         }
+        XaeroOverlayRenderer
+            .render(cameraX, cameraZ, scale, -1, -1, renderer.getWidth(), renderer.getHeight(), dimensionId);
     }
 
     @Optional.Method(modid = "journeymap")
     public static void renderMinimap(GridRenderer renderer) {
         if (NavigatorMapBridge.ownsJourneyMap()) {
-            return;
+            if (!NavigatorMapBridge.isJourneyMapLayerActive() || NavigatorMapBridge.hasJourneyMapRenderSteps()) {
+                return;
+            }
         }
         Minecraft minecraft = Minecraft.getMinecraft();
         if (minecraft.theWorld == null || renderer == null || renderer.getMapType() == null) {

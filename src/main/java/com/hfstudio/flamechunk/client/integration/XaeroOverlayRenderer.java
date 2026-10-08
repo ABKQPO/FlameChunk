@@ -118,7 +118,8 @@ public class XaeroOverlayRenderer {
                         double minZ = cell.getChunkZ() * 16.0D - cameraZ;
                         double maxZ = minZ + 16.0D;
                         if (maxX * scale < -width * 0.5D || minX * scale > width * 0.5D
-                            || maxZ * scale < -height * 0.5D || minZ * scale > height * 0.5D) {
+                            || maxZ * scale < -height * 0.5D
+                            || minZ * scale > height * 0.5D) {
                             continue;
                         }
                         tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
@@ -138,6 +139,29 @@ public class XaeroOverlayRenderer {
         }
     }
 
+    public static void renderWorldMapTooltip(double cameraX, double cameraZ, double scale, int dimensionId,
+        int displayMouseX, int displayMouseY, int mouseX, int mouseY, int width, int height, int displayWidth,
+        int displayHeight) {
+        if (!Double.isFinite(scale) || scale <= 0.0D
+            || width <= 0
+            || height <= 0
+            || displayWidth <= 0
+            || displayHeight <= 0
+            || displayMouseX < 0
+            || displayMouseY < 0) {
+            return;
+        }
+        MapOverlayModel model = ClientMapOverlayState.get();
+        if (model.getCells(dimensionId)
+            .isEmpty()) {
+            return;
+        }
+        int chunkX = floorChunk(cameraX + (displayMouseX - displayWidth * 0.5D) / scale);
+        int chunkZ = floorChunk(cameraZ + (displayMouseY - displayHeight * 0.5D) / scale);
+        MapOverlayCell cell = model.find(dimensionId, chunkX, chunkZ);
+        MapOverlayTooltip.draw(mouseX, mouseY, cell, chunkX, chunkZ, width, height);
+    }
+
     public static void renderNavigatorSupplements(double cameraX, double cameraZ, double scale, int mouseX, int mouseY,
         int width, int height, int dimensionId) {
         if (!Double.isFinite(scale) || scale <= 0.0D || width <= 0 || height <= 0) {
@@ -148,26 +172,7 @@ public class XaeroOverlayRenderer {
             .isEmpty()) {
             return;
         }
-        MapOverlayCell hoveredIndicator = drawOffscreenRiskIndicators(
-            model,
-            dimensionId,
-            cameraX,
-            cameraZ,
-            scale,
-            width,
-            height,
-            mouseX,
-            mouseY);
-        if (mouseX < 0 || mouseY < 0) {
-            return;
-        }
-        int mouseChunkX = floorChunk(cameraX + (mouseX - width * 0.5D) / scale);
-        int mouseChunkZ = floorChunk(cameraZ + (mouseY - height * 0.5D) / scale);
-        MapOverlayCell cell = hoveredIndicator == null ? model.find(dimensionId, mouseChunkX, mouseChunkZ)
-            : hoveredIndicator;
-        if (cell != null) {
-            MapOverlayTooltip.draw(mouseX, mouseY, cell, cell.getChunkX(), cell.getChunkZ(), width, height);
-        }
+        drawOffscreenRiskIndicators(model, dimensionId, cameraX, cameraZ, scale, width, height, mouseX, mouseY);
     }
 
     public static void renderChunkCells(MapOverlayModel model, int dimensionId, double cameraX, double cameraZ,
@@ -442,6 +447,57 @@ public class XaeroOverlayRenderer {
                 }
                 int color = cell.getColor();
                 tessellator.setColorRGBA_I(color, ColorUtils.alpha(cell.getOpacity()));
+                tessellator.addVertex(minX, minZ, 0.0D);
+                tessellator.addVertex(maxX, minZ, 0.0D);
+                tessellator.addVertex(maxX, maxZ, 0.0D);
+                tessellator.addVertex(minX, maxZ, 0.0D);
+                if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
+                    addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
+                }
+            }
+            tessellator.draw();
+        } finally {
+            GL11.glPopMatrix();
+            GL11.glPopAttrib();
+        }
+    }
+
+    public static void renderMinimapInXaeroMatrix(double cameraX, double cameraZ, double mapScale, int viewportSize,
+        double renderAngle) {
+        if (!Double.isFinite(mapScale) || mapScale <= 0.0D || viewportSize <= 0) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getMinecraft();
+        World world = minecraft.theWorld;
+        if (world == null) {
+            return;
+        }
+        MapOverlayModel model = ClientMapOverlayState.get();
+        List<MapOverlayCell> cells = model.getCells(world.provider.dimensionId);
+        if (cells.isEmpty()) {
+            return;
+        }
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
+        GL11.glPushMatrix();
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glRotated(renderAngle - 90.0D, 0.0D, 0.0D, 1.0D);
+        GL11.glScaled(mapScale, mapScale, 1.0D);
+        try {
+            double halfViewport = viewportSize / (2.0D * mapScale);
+            Tessellator tessellator = Tessellator.instance;
+            tessellator.startDrawingQuads();
+            for (MapOverlayCell cell : cells) {
+                double minX = cell.getChunkX() * 16.0D - cameraX;
+                double maxX = minX + 16.0D;
+                double minZ = cell.getChunkZ() * 16.0D - cameraZ;
+                double maxZ = minZ + 16.0D;
+                if (maxX < -halfViewport || minX > halfViewport || maxZ < -halfViewport || minZ > halfViewport) {
+                    continue;
+                }
+                tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
                 tessellator.addVertex(minX, minZ, 0.0D);
                 tessellator.addVertex(maxX, minZ, 0.0D);
                 tessellator.addVertex(maxX, maxZ, 0.0D);

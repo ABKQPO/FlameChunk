@@ -48,7 +48,7 @@ public class FlameChunkCoreMod implements IFMLLoadingPlugin, IEarlyMixinLoader {
     @Override
     public String getMixinConfig() {
         int v = Runtime.version()
-                .feature();
+            .feature();
         if (v >= 21) return "mixins.flamechunk.early.j21.json";
         if (v >= 17) return "mixins.flamechunk.early.j17.json";
         return "mixins.flamechunk.early.json";

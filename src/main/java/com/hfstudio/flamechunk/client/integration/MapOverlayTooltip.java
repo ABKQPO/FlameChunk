@@ -36,6 +36,9 @@ public class MapOverlayTooltip {
 
     public static void draw(int mouseX, int mouseY, MapOverlayCell cell, int chunkX, int chunkZ, int width,
         int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
         List<String> lines = lines(cell, chunkX, chunkZ);
         if (lines.isEmpty()) {
             return;
@@ -67,12 +70,12 @@ public class MapOverlayTooltip {
         int boxWidth = textWidth + PADDING * 2;
         int boxHeight = lines.size() * lineHeight + PADDING * 2;
         int x = mouseX + OFFSET;
-        int y = mouseY - OFFSET - boxHeight;
+        int y = mouseY - OFFSET;
         if (x + boxWidth > width - MARGIN) {
             x = mouseX - OFFSET - boxWidth;
         }
-        if (y < MARGIN) {
-            y = mouseY + OFFSET;
+        if (y + boxHeight > height - MARGIN) {
+            y = mouseY - OFFSET - boxHeight;
         }
         x = Math.max(MARGIN, Math.min(x, width - MARGIN - boxWidth));
         y = Math.max(MARGIN, Math.min(y, height - MARGIN - boxHeight));

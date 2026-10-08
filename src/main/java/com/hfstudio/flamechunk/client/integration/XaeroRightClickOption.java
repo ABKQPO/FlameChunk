@@ -34,15 +34,10 @@ public class XaeroRightClickOption extends RightClickOption {
         switch (action) {
             case ACTION_SCAN -> MapOverlayControls.toggleScan();
             case ACTION_CLEAR -> MapOverlayControls.clear();
-            case ACTION_WEAK_CLEAR -> MapOverlayControls.confirmWeakClear(
-                screen,
-                dimensionId,
-                chunkX,
-                chunkZ,
-                entityType);
+            case ACTION_WEAK_CLEAR -> MapOverlayControls
+                .confirmWeakClear(screen, dimensionId, chunkX, chunkZ, entityType);
             case ACTION_LOADER -> MapOverlayControls.confirmLoaderToggle(screen, dimensionId, chunkX, chunkZ);
-            default -> {
-            }
+            default -> {}
         }
     }
 }

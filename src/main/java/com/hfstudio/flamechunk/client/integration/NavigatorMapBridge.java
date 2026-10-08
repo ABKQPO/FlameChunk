@@ -2,6 +2,7 @@ package com.hfstudio.flamechunk.client.integration;
 
 import com.gtnewhorizons.navigator.api.NavigatorApi;
 import com.gtnewhorizons.navigator.api.model.SupportedMods;
+import com.gtnewhorizons.navigator.api.model.layers.LayerRenderer;
 import com.hfstudio.flamechunk.common.integration.Mods;
 
 import cpw.mods.fml.common.Optional;
@@ -39,6 +40,14 @@ public class NavigatorMapBridge {
         return Mods.Navigator.isModLoaded() && navigatorJourneyMapLayerActive();
     }
 
+    public static boolean hasJourneyMapRenderSteps() {
+        return Mods.Navigator.isModLoaded() && navigatorHasJourneyMapRenderSteps();
+    }
+
+    public static boolean hasXaeroWorldMapRenderSteps() {
+        return Mods.Navigator.isModLoaded() && navigatorHasXaeroWorldMapRenderSteps();
+    }
+
     public static boolean isXaeroWorldMapLayerActive() {
         return Mods.Navigator.isModLoaded() && navigatorXaeroWorldMapLayerActive();
     }
@@ -46,6 +55,7 @@ public class NavigatorMapBridge {
     @Optional.Method(modid = "navigator")
     public static void registerNavigatorLayer() {
         NavigatorApi.registerLayerManager(NavigatorHeatmapLayer.INSTANCE);
+        NavigatorActionLayer.BUTTONS.forEach(NavigatorApi::registerLayerManager);
         NavigatorHeatmapLayer.INSTANCE.publish(ClientMapOverlayState.get());
     }
 
@@ -66,12 +76,29 @@ public class NavigatorMapBridge {
 
     @Optional.Method(modid = "navigator")
     public static boolean navigatorOwnsXaeroMinimap() {
-        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroMiniMap);
+        // Navigator renders the Xaero minimap through its Xaero World Map renderer.
+        return NavigatorHeatmapLayer.INSTANCE.isEnabled(SupportedMods.XaeroWorldMap);
     }
 
     @Optional.Method(modid = "navigator")
     public static boolean navigatorJourneyMapLayerActive() {
         return NavigatorHeatmapLayer.INSTANCE.isLayerActive();
+    }
+
+    @Optional.Method(modid = "navigator")
+    public static boolean navigatorHasJourneyMapRenderSteps() {
+        LayerRenderer renderer = NavigatorHeatmapLayer.INSTANCE.getLayerRenderer(SupportedMods.JourneyMap);
+        return NavigatorHeatmapLayer.INSTANCE.isLayerActive() && renderer != null
+            && !renderer.getRenderSteps()
+                .isEmpty();
+    }
+
+    @Optional.Method(modid = "navigator")
+    public static boolean navigatorHasXaeroWorldMapRenderSteps() {
+        LayerRenderer renderer = NavigatorHeatmapLayer.INSTANCE.getLayerRenderer(SupportedMods.XaeroWorldMap);
+        return NavigatorHeatmapLayer.INSTANCE.isLayerActive() && renderer != null
+            && !renderer.getRenderSteps()
+                .isEmpty();
     }
 
     @Optional.Method(modid = "navigator")
