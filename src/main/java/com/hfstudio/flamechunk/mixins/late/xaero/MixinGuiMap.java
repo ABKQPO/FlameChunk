@@ -103,7 +103,7 @@ public abstract class MixinGuiMap extends ScreenBase {
     private void flamechunk$renderOverlayChrome(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {
         Minecraft minecraft = Minecraft.getMinecraft();
-        if (minecraft.currentScreen != (Object) this || minecraft.theWorld == null) {
+        if (minecraft.currentScreen != this || minecraft.theWorld == null) {
             MapOverlayTooltip.clearPending();
             return;
         }

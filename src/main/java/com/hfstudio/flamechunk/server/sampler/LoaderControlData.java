@@ -131,7 +131,7 @@ public class LoaderControlData extends WorldSavedData {
                 }
                 ticket.setTag(
                     MOD_DATA_TAG,
-                    (NBTTagCompound) ticketReference.modData()
+                    ticketReference.modData()
                         .copy());
                 tickets.appendTag(ticket);
             }

@@ -29,6 +29,9 @@ dependencies {
     compileOnly(rfg.deobf('maven.modrinth:xaeros-minimap:21.10.44_Forge_1.7.10'))
     compileOnly(rfg.deobf('maven.modrinth:xaeros-world-map:1.14.1.33_Forge_1.7.10'))
 
+    compileOnly("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1080-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-1080-GTNH:dev")
+
     journeyMap5Launch(rfg.deobf('curse.maven:journeymap-32274:8879293'))
     journeyMap6Launch('info.journeymap:journeymap-api-forge:1.7.10-2.0.0')
     journeyMap6Launch(rfg.deobf('maven.modrinth:journeymap:1.7.10-6.0.8+forge'))

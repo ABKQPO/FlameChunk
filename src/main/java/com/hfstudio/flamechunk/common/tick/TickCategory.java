@@ -11,7 +11,8 @@ public enum TickCategory {
     BLOCK_EVENT,
     HANDLER,
     GARBAGE_COLLECTION,
-    TASK;
+    TASK,
+    AE2_NETWORK;
 
     public static final int COUNT = values().length;
 
@@ -21,6 +22,7 @@ public enum TickCategory {
             || this == RANDOM_TICK
             || this == SCHEDULED_TICK
             || this == BLOCK_EVENT
-            || this == BLOCK_UPDATE;
+            || this == BLOCK_UPDATE
+            || this == AE2_NETWORK;
     }
 }

@@ -215,6 +215,8 @@ public class ClientConfig {
         public boolean garbageCollection = true;
         @Config.DefaultBoolean(true)
         public boolean task = true;
+        @Config.DefaultBoolean(true)
+        public boolean ae2Network = true;
 
         public boolean contains(TickCategory category) {
             return switch (category) {
@@ -228,6 +230,7 @@ public class ClientConfig {
                 case HANDLER -> handler;
                 case GARBAGE_COLLECTION -> garbageCollection;
                 case TASK -> task;
+                case AE2_NETWORK -> ae2Network;
             };
         }
 
@@ -243,6 +246,7 @@ public class ClientConfig {
                 case HANDLER -> handler = !handler;
                 case GARBAGE_COLLECTION -> garbageCollection = !garbageCollection;
                 case TASK -> task = !task;
+                case AE2_NETWORK -> ae2Network = !ae2Network;
             }
         }
     }

@@ -28,6 +28,7 @@ public enum Mods implements IMod, ITargetMod {
     XaeroMinimap("XaeroMinimap"),
     Navigator("navigator"),
     ServerUtilities("serverutilities"),
+    AppliedEnergistics2("appliedenergistics2"),
     ;
     // spotless:on
 

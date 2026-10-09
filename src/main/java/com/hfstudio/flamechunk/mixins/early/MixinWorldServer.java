@@ -8,6 +8,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -64,6 +65,7 @@ public abstract class MixinWorldServer {
         flamechunk$runScheduledTick(block, world, x, y, z, random);
     }
 
+    @Unique
     private void flamechunk$runScheduledTick(Block block, World world, int x, int y, int z, Random random) {
         long start = PerformanceSampler.beginTiming();
         int work = start == 0 ? 0

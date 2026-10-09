@@ -34,7 +34,7 @@ public interface ServerUtilitiesBridge {
         }
     }
 
-    public static class NoOpServerUtilitiesBridge implements ServerUtilitiesBridge {
+    class NoOpServerUtilitiesBridge implements ServerUtilitiesBridge {
 
         @Override
         public boolean isAvailable() {
