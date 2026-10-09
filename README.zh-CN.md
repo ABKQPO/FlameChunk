@@ -10,8 +10,6 @@ FlameChunk 是面向 Minecraft 1.7.10 Forge 的服务端性能采样、区块热
 - ServerUtilities 为可选依赖。安装后 FlameChunk 注册扫描、弱区块清理和加载器管理权限，并可显示领地信息。未安装时玩家权限由服务端 OP 设置控制。
 - JourneyMap 5 和 6 使用不同的 Forge mod id 识别。请勿同时安装两个 JourneyMap 版本。
 
-当前移植不包含 FTB/C2ME 与 Carpet 集成。放置者归属和 loader 区域显示依赖 1.7.10 不具备的版本能力，因此不提供这些显示。1.7.10 原生 Forge ticket 来源、加载器冻结和可识别的 ServerUtilities 领地信息仍可使用。
-
 ## 性能分析
 
 服务端按需采样并生成有界报告，覆盖随机刻、计划刻、方块更新、方块事件、方块实体、实体、自然刷怪、事件处理器、服务端任务和垃圾回收。区块热力使用每 tick 毫秒数（MSPT）；合计不重复计算方块更新耗时。
@@ -55,11 +53,9 @@ JourneyMap 5、JourneyMap 6、Xaero's World Map 和 Xaero's Minimap 可显示性
 - Watchdog 崩溃报告可附加有界的 Forge ticket 来源、区块、实体和方块实体摘要；该诊断可配置关闭。
 - 加载器冻结策略保存在世界数据中，并会作用于后续匹配的 ticket；可列出策略或清理失效策略。
 
-服务端与客户端配置由 GTNHLib `@Config` 注册，位于 FlameChunk 配置目录。客户端可设置热力阈值和透明度、弱加载显示、ticket 标记、工具提示字段和分类、实时订阅、世界覆盖层及报告输出方式。客户端还可用键位打开诊断界面。
+客户端可设置热力阈值和透明度、弱加载显示、ticket 标记、工具提示字段和分类、实时订阅、世界覆盖层及报告输出方式。客户端还可用键位打开诊断界面。
 
 ## 开发
-
-项目使用 JDK 25 和 RFG 构建。Windows PowerShell 中可运行以下命令构建且不运行单元测试：
 
 ```powershell
 .\gradlew.bat build -x test
@@ -78,5 +74,3 @@ JourneyMap 5、JourneyMap 6、Xaero's World Map 和 Xaero's Minimap 可显示性
 | `runClient25Jm5` | JourneyMap 5 |
 | `runClient25Jm6` | JourneyMap 6 及其 API |
 | `runClient25Xaero` | Xaero's Minimap 和 Xaero's World Map |
-
-当前 Xaero 开发启动配置受已安装的 `lwjgl3ify` 兼容问题影响：其 `XaerosMinimapScrolling` Mixin 目标 `onGuiClosed()V` 不存在于当前使用的 Xaero JAR 中，因此可能在 FlameChunk 集成初始化前中止客户端启动。

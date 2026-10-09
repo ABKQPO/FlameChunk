@@ -10,8 +10,6 @@ FlameChunk is a Minecraft 1.7.10 Forge mod for server-side performance sampling,
 - ServerUtilities is optional. When installed, FlameChunk registers permissions for scans, weak-chunk cleanup, and loader controls, and can report claim information. Without it, player permissions are controlled by the server operator setting.
 - JourneyMap 5 and 6 use different Forge mod IDs. Do not install both versions at the same time.
 
-FTB/C2ME and Carpet integrations are not included in this port. Placer attribution and loader-region visualization depend on version capabilities unavailable in 1.7.10. Native Forge ticket sources, loader freezing, and available ServerUtilities claim information remain supported.
-
 ## Performance Analysis
 
 The server produces bounded, on-demand reports for random ticks, scheduled ticks, block updates, block events, block entities, entities, natural spawning, event handlers, server tasks, and garbage collection. Chunk heatmaps use milliseconds per tick (MSPT). Totals do not count block-update time twice.
@@ -55,11 +53,9 @@ By default, scans, loader controls, and weak-chunk cleanup require operator perm
 - Watchdog crash reports can include bounded summaries of Forge ticket sources, chunks, entities, and block entities. This diagnostic can be disabled.
 - Loader-freeze policies are saved with world data and also apply to matching future tickets. Policies can be listed or cleared when orphaned.
 
-Server and client settings are registered through GTNHLib `@Config` in the FlameChunk configuration directory. Client settings include heat thresholds and opacity, weak-chunk display, ticket markers, tooltip fields and categories, live subscriptions, world overlays, and report output. A key binding opens the diagnostics screen.
+Client settings include heat thresholds and opacity, weak-chunk display, ticket markers, tooltip fields and categories, live subscriptions, world overlays, and report output. A key binding opens the diagnostics screen.
 
 ## Development
-
-The project uses JDK 25 and RFG. On Windows, build without running unit tests with:
 
 ```powershell
 .\gradlew.bat build -x test
@@ -78,5 +74,3 @@ Each map client profile uses a separate run directory and inherits the launch ar
 | `runClient25Jm5` | JourneyMap 5 |
 | `runClient25Jm6` | JourneyMap 6 and its API |
 | `runClient25Xaero` | Xaero's Minimap and Xaero's World Map |
-
-The current Xaero development profile is affected by an installed `lwjgl3ify` compatibility issue: its `XaerosMinimapScrolling` Mixin targets an `onGuiClosed()V` method absent from the Xaero JAR in use. This can stop client startup before FlameChunk's integration initializes.
