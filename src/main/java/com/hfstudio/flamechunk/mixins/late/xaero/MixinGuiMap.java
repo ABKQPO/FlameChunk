@@ -7,7 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.gui.ScaledResolution;
 
+import org.lwjgl.input.Mouse;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -17,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
+import com.hfstudio.flamechunk.client.integration.MapOverlayTooltip;
+import com.hfstudio.flamechunk.client.integration.MapScanProgressRenderer;
 import com.hfstudio.flamechunk.client.integration.NavigatorMapBridge;
 import com.hfstudio.flamechunk.client.integration.XaeroOverlayRenderer;
 import com.hfstudio.flamechunk.client.integration.XaeroRightClickOption;
@@ -24,6 +28,7 @@ import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot.EntityTypeCount;
 
 import xaero.map.gui.GuiDropDown;
 import xaero.map.gui.GuiMap;
+import xaero.map.gui.GuiRightClickMenu;
 import xaero.map.gui.RightClickOption;
 import xaero.map.gui.ScreenBase;
 
@@ -54,8 +59,18 @@ public abstract class MixinGuiMap extends ScreenBase {
     @Shadow(remap = false)
     private int rightClickZ;
 
+    @Shadow(remap = false)
+    private GuiRightClickMenu rightClickMenu;
+
     protected MixinGuiMap(GuiScreen parent, GuiScreen escape) {
         super(parent, escape);
+    }
+
+    @Inject(method = "drawScreen", at = @At("HEAD"), remap = true)
+    private void flamechunk$beginFrame(int scaledMouseX, int scaledMouseY, float partialTicks,
+        CallbackInfo callbackInfo) {
+        MapOverlayTooltip.clearPending();
+        MapOverlayTooltip.setContextMenuOpen(rightClickMenu != null);
     }
 
     @Inject(
@@ -70,36 +85,55 @@ public abstract class MixinGuiMap extends ScreenBase {
     private void flamechunk$renderHeatmap(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {
         Minecraft minecraft = Minecraft.getMinecraft();
-        if (minecraft.currentScreen == null || minecraft.theWorld == null) {
+        if (minecraft.currentScreen == null || minecraft.theWorld == null
+            || !NavigatorMapBridge.isXaeroWorldMapHeatmapVisible()) {
+            return;
+        }
+        if (NavigatorMapBridge.ownsXaeroWorldMap() && NavigatorMapBridge.hasXaeroWorldMapRenderSteps()) {
+            // Navigator owns the draw for this frame.
             return;
         }
         int dimensionId = lastViewedDimensionId == null ? minecraft.theWorld.provider.dimensionId
             : lastViewedDimensionId;
-        if (NavigatorMapBridge.ownsXaeroWorldMap() && !NavigatorMapBridge.isXaeroWorldMapLayerActive()) {
-            return;
-        }
-        if (!NavigatorMapBridge.ownsXaeroWorldMap() || !NavigatorMapBridge.hasXaeroWorldMapRenderSteps()) {
-            XaeroOverlayRenderer
-                .renderWorldMap(cameraX, cameraZ, scale, dimensionId, minecraft.displayWidth, minecraft.displayHeight);
-        }
+        XaeroOverlayRenderer
+            .renderWorldMap(cameraX, cameraZ, scale, dimensionId, minecraft.displayWidth, minecraft.displayHeight);
     }
 
     @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
-    private void flamechunk$renderTooltip(int scaledMouseX, int scaledMouseY, float partialTicks,
+    private void flamechunk$renderOverlayChrome(int scaledMouseX, int scaledMouseY, float partialTicks,
         CallbackInfo callbackInfo) {
-        if (NavigatorMapBridge.ownsXaeroWorldMap() && NavigatorMapBridge.isXaeroWorldMapLayerActive()
-            && NavigatorMapBridge.hasXaeroWorldMapRenderSteps()) {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        if (minecraft.currentScreen != (Object) this || minecraft.theWorld == null) {
+            MapOverlayTooltip.clearPending();
             return;
         }
-        Minecraft minecraft = Minecraft.getMinecraft();
-        if (minecraft.currentScreen == null || minecraft.theWorld == null
-            || flamechunk$isUiHovered(scaledMouseX, scaledMouseY)) {
+        flamechunk$renderScanProgress();
+        if (!NavigatorMapBridge.isXaeroWorldMapHeatmapVisible()) {
+            MapOverlayTooltip.clearPending();
+            return;
+        }
+        if (!NavigatorMapBridge.ownsXaeroWorldMap() || !NavigatorMapBridge.hasXaeroWorldMapRenderSteps()) {
+            flamechunk$queueOwnTooltip(minecraft);
+        }
+        // Drawn last so the tooltip is never covered by the map buttons, dropdowns or the waypoint list.
+        MapOverlayTooltip.flush();
+    }
+
+    @Unique
+    private void flamechunk$queueOwnTooltip(Minecraft minecraft) {
+        if (rightClickMenu != null) {
+            return;
+        }
+        ScaledResolution resolution = new ScaledResolution(minecraft, minecraft.displayWidth, minecraft.displayHeight);
+        int displayMouseX = Mouse.getX();
+        int displayMouseY = minecraft.displayHeight - 1 - Mouse.getY();
+        int guiMouseX = displayMouseX * resolution.getScaledWidth() / Math.max(1, minecraft.displayWidth);
+        int guiMouseY = displayMouseY * resolution.getScaledHeight() / Math.max(1, minecraft.displayHeight);
+        if (flamechunk$isUiHovered(guiMouseX, guiMouseY)) {
             return;
         }
         int dimensionId = lastViewedDimensionId == null ? minecraft.theWorld.provider.dimensionId
             : lastViewedDimensionId;
-        int displayMouseX = scaledMouseX * minecraft.displayWidth / Math.max(1, width);
-        int displayMouseY = scaledMouseY * minecraft.displayHeight / Math.max(1, height);
         XaeroOverlayRenderer.renderWorldMapTooltip(
             cameraX,
             cameraZ,
@@ -107,12 +141,27 @@ public abstract class MixinGuiMap extends ScreenBase {
             dimensionId,
             displayMouseX,
             displayMouseY,
-            scaledMouseX,
-            scaledMouseY,
+            guiMouseX,
+            guiMouseY,
             width,
             height,
             minecraft.displayWidth,
             minecraft.displayHeight);
+    }
+
+    @Unique
+    private void flamechunk$renderScanProgress() {
+        if (!MapOverlayControls.isScanning()) {
+            return;
+        }
+        int slot = NavigatorMapBridge.xaeroScanButtonSlot();
+        if (slot < 0) {
+            // Without Navigator the only scan control is the right-click menu, so anchor the readout bottom-left.
+            MapScanProgressRenderer.render(6, height - 24, 0, 0, 0, 0);
+            return;
+        }
+        int buttonY = (height / 2 + NavigatorMapBridge.xaeroButtonCount() * 20 / 2) - 20 - 20 * slot;
+        MapScanProgressRenderer.render(24, buttonY + 5, 0, buttonY, 20, 20);
     }
 
     @Unique
@@ -141,6 +190,12 @@ public abstract class MixinGuiMap extends ScreenBase {
         return false;
     }
 
+    @Inject(method = "onGuiClosed", at = @At("RETURN"), remap = true)
+    private void flamechunk$resetTooltip(CallbackInfo callbackInfo) {
+        MapOverlayTooltip.setContextMenuOpen(false);
+        MapOverlayTooltip.clearPending();
+    }
+
     @Inject(method = "getRightClickOptions", at = @At("RETURN"), remap = false)
     private void flamechunk$addContextActions(CallbackInfoReturnable<ArrayList<RightClickOption>> callbackInfo) {
         if (callbackInfo.getReturnValue() == null || Minecraft.getMinecraft().theWorld == null) {
@@ -159,14 +214,14 @@ public abstract class MixinGuiMap extends ScreenBase {
         ArrayList<RightClickOption> options = callbackInfo.getReturnValue();
         options.add(
             new XaeroRightClickOption(
-                "flamechunk.client.map.scan",
+                MapOverlayControls.isScanning() ? "flamechunk.client.map.stop" : "flamechunk.client.map.scan",
                 options.size(),
                 map,
                 XaeroRightClickOption.ACTION_SCAN,
                 dimensionId,
                 0,
                 0,
-                null));
+                null).setNameFormatArgs(Math.round(MapOverlayControls.scanProgress() * 100.0F)));
         options.add(
             new XaeroRightClickOption(
                 "flamechunk.client.map.clear",

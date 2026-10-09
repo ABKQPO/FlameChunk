@@ -43,6 +43,7 @@ key.categories.flamechunk=FlameChunk
 flamechunk.client.title=FlameChunk diagnostics
 flamechunk.client.map.layer=FlameChunk heatmap
 flamechunk.client.map.scan=Start FlameChunk scan
+flamechunk.client.map.stop=Stop FlameChunk scan (%s%%)
 flamechunk.client.map.clear=Clear FlameChunk overlay
 flamechunk.client.progress=Scan progress: %s%%
 flamechunk.client.scanStatus.0=Scan request queued

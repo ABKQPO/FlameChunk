@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
+import com.hfstudio.flamechunk.client.integration.MapOverlayTooltip;
 import com.hfstudio.flamechunk.client.integration.MapScanProgressRenderer;
 
 import journeymap.client.ui.component.buttons.Button;
@@ -54,7 +55,7 @@ public abstract class MixinFullscreen {
             flamechunk$scanButton = new Button(
                 6,
                 flamechunk$screenHeight() - 24,
-                new ChatComponentText(MapOverlayControls.scanMenuLabel()),
+                new ChatComponentText(MapOverlayControls.scanButtonLabel()),
                 button -> MapOverlayControls.toggleScan());
             flamechunk$scanButton.setWidth(76);
             flamechunk$scanButton.setHeight(20);
@@ -87,6 +88,7 @@ public abstract class MixinFullscreen {
 
     @Inject(method = "drawScreen", at = @At("HEAD"), remap = true)
     private void flamechunk$updateButtonDrag(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
+        MapOverlayTooltip.clearPending();
         GuiScreen screen = Minecraft.getMinecraft().currentScreen;
         if (screen != null) {
             flamechunk$updateButtonDrag(screen.width, screen.height, mouseX, mouseY);
@@ -96,28 +98,34 @@ public abstract class MixinFullscreen {
     @Inject(method = "drawScreen", at = @At("RETURN"), remap = true)
     private void flamechunk$renderScanProgress(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
         flamechunk$finishButtonDrag();
-        if (flamechunk$scanButton == null || !isButtonsVisable()) {
-            return;
+        if (flamechunk$scanButton != null && isButtonsVisable()) {
+            flamechunk$updateScanButton();
+            MapScanProgressRenderer.render(
+                flamechunk$scanButton.getX(),
+                flamechunk$scanButton.getY() - 24,
+                flamechunk$scanButton.getX(),
+                flamechunk$scanButton.getY(),
+                flamechunk$scanButton.jmGetWidth(),
+                flamechunk$scanButton.getHeight());
         }
-        MapScanProgressRenderer.render(
-            flamechunk$scanButton.getX(),
-            flamechunk$scanButton.getY() - 24,
-            flamechunk$scanButton.getX(),
-            flamechunk$scanButton.getY(),
-            flamechunk$scanButton.jmGetWidth(),
-            flamechunk$scanButton.getHeight());
+        // Drawn last so the tooltip sits above JourneyMap's buttons instead of behind them.
+        MapOverlayTooltip.flush();
+    }
+
+    @Inject(method = "onGuiClosed", at = @At("RETURN"), remap = true)
+    private void flamechunk$resetTooltip(CallbackInfo callbackInfo) {
+        MapOverlayTooltip.setContextMenuOpen(false);
+        MapOverlayTooltip.clearPending();
     }
 
     @Unique
     private void flamechunk$updateScanButton() {
-        boolean scanning = MapOverlayControls.isScanning();
-        boolean pending = MapOverlayControls.hasPendingScan();
-        int state = scanning ? 1000 + Math.round(MapOverlayControls.scanProgress() * 100.0F) : pending ? -1 : 0;
+        int state = MapOverlayControls.scanButtonState();
         if (state == flamechunk$scanButtonState) {
             return;
         }
-        flamechunk$scanButton.setMessage(new ChatComponentText(MapOverlayControls.scanMenuLabel()));
-        flamechunk$scanButton.setEnabled(scanning || !pending);
+        flamechunk$scanButton.setMessage(new ChatComponentText(MapOverlayControls.scanButtonLabel()));
+        flamechunk$scanButton.setEnabled(MapOverlayControls.isScanning() || !MapOverlayControls.hasPendingScan());
         flamechunk$scanButtonState = state;
     }
 
@@ -129,6 +137,8 @@ public abstract class MixinFullscreen {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, remap = true)
     private void flamechunk$beginButtonDrag(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
+        // Any click dismisses an open popup; a right-click re-arms the latch later in this same call.
+        MapOverlayTooltip.setContextMenuOpen(false);
         if (mouseButton != 1 || flamechunk$scanButton == null || flamechunk$clearButton == null) {
             return;
         }

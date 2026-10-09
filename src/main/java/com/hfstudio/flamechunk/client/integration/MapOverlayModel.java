@@ -221,15 +221,6 @@ public class MapOverlayModel {
         return dimensionCells == null ? Collections.emptyList() : dimensionCells;
     }
 
-    public List<MapOverlayCell> getCellsInTile(int dimensionId, int tileX, int tileZ) {
-        Long2ObjectOpenHashMap<List<MapOverlayCell>> tileIndex = cellsByTile.get(dimensionId);
-        if (tileIndex == null) {
-            return Collections.emptyList();
-        }
-        List<MapOverlayCell> tileCells = tileIndex.get(key(tileX, tileZ));
-        return tileCells == null ? Collections.emptyList() : tileCells;
-    }
-
     public boolean hasSameContent(MapOverlayModel other) {
         if (other == null || displaySignature != other.displaySignature || cells.size() != other.cells.size()) {
             return false;

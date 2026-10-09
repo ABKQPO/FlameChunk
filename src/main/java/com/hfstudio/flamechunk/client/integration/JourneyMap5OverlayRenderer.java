@@ -27,10 +27,10 @@ public class JourneyMap5OverlayRenderer {
         double cameraX = renderer.getCenterBlockX() - offsetX / scale;
         double cameraZ = renderer.getCenterBlockZ() - offsetY / scale;
         int dimensionId = renderer.getMapType().dimension;
+        if (!NavigatorMapBridge.isJourneyMapHeatmapVisible()) {
+            return;
+        }
         if (NavigatorMapBridge.ownsJourneyMap()) {
-            if (!NavigatorMapBridge.isJourneyMapLayerActive()) {
-                return;
-            }
             if (NavigatorMapBridge.hasJourneyMapRenderSteps()) {
                 Fullscreen screen = (Fullscreen) minecraft.currentScreen;
                 if (screen == null) {
@@ -69,10 +69,9 @@ public class JourneyMap5OverlayRenderer {
 
     @Optional.Method(modid = "journeymap")
     public static void renderMinimap(GridRenderer renderer) {
-        if (NavigatorMapBridge.ownsJourneyMap()) {
-            if (!NavigatorMapBridge.isJourneyMapLayerActive() || NavigatorMapBridge.hasJourneyMapRenderSteps()) {
-                return;
-            }
+        if (!NavigatorMapBridge.isJourneyMapHeatmapVisible()
+            || NavigatorMapBridge.ownsJourneyMap() && NavigatorMapBridge.hasJourneyMapRenderSteps()) {
+            return;
         }
         Minecraft minecraft = Minecraft.getMinecraft();
         if (minecraft.theWorld == null || renderer == null || renderer.getMapType() == null) {
@@ -92,12 +91,15 @@ public class JourneyMap5OverlayRenderer {
 
     @Optional.Method(modid = "journeymap")
     public static void renderTooltip(Fullscreen screen, GridRenderer renderer, int mouseX, int mouseY) {
-        if (NavigatorMapBridge.ownsJourneyMap()) {
+        if (NavigatorMapBridge.ownsJourneyMap() || !NavigatorMapBridge.isJourneyMapHeatmapVisible()) {
             return;
         }
         if (screen == null || renderer == null
             || renderer.getMapType() == null
-            || Minecraft.getMinecraft().theWorld == null) {
+            || Minecraft.getMinecraft().theWorld == null
+            || Minecraft.getMinecraft().currentScreen != screen
+            || mouseX < 0
+            || mouseY < 0) {
             return;
         }
         for (int index = 0; index < screen.getButtonList()

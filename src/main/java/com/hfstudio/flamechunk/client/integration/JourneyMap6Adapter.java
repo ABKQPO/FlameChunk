@@ -27,6 +27,7 @@ import journeymap.api.v2.client.event.PopupMenuEvent.FullscreenPopupMenuEvent;
 import journeymap.api.v2.client.fullscreen.ModPopupMenu;
 import journeymap.api.v2.client.model.MapPolygon;
 import journeymap.api.v2.client.model.ShapeProperties;
+import journeymap.api.v2.client.model.TextProperties;
 import journeymap.api.v2.common.Context;
 import journeymap.api.v2.common.JourneyMapPlugin;
 import journeymap.api.v2.common.util.BlockPos;
@@ -266,9 +267,17 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
                     : 0.0F)
             .setStrokeWidth(1.5F);
         overlay.setShapeProperties(properties);
+        overlay.setTextProperties(
+            new TextProperties().setColor(ColorUtils.rgb(ColorUtils.TEXT_PRIMARY))
+                .setBackgroundOpacity(0.0F)
+                .setFontShadow(true)
+                .setScale(1.0F)
+                .setMinZoom(2)
+                .setActiveUIs(Context.UI.Fullscreen));
+        // The label is the per-chunk ms/t readout; the title would duplicate it inside JourneyMap's own tooltip.
         overlay.setOverlayGroupName(GROUP_NAME)
             .setTitle(null)
-            .setLabel(null)
+            .setLabel(cell.getLabel())
             .setActiveUIs(Context.UI.Fullscreen, Context.UI.Minimap)
             .setDisplayOrder(100)
             .flagForRerender();

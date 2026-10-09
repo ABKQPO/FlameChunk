@@ -5,11 +5,8 @@ import java.util.Collection;
 import java.util.List;
 
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
-
-import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.navigator.api.model.SupportedMods;
 import com.gtnewhorizons.navigator.api.model.buttons.ButtonManager;
@@ -18,21 +15,20 @@ import com.gtnewhorizons.navigator.api.model.layers.LayerRenderer;
 import com.gtnewhorizons.navigator.api.model.layers.UniversalInteractableRenderer;
 import com.gtnewhorizons.navigator.api.model.locations.ILocationProvider;
 import com.gtnewhorizons.navigator.api.model.steps.UniversalLocationInteractableStep;
+import com.gtnewhorizons.navigator.api.util.DrawUtils;
 import com.hfstudio.flamechunk.client.config.ClientConfig;
+import com.hfstudio.flamechunk.client.render.ChunkLabelRenderer;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.integration.Mods;
 
 import cpw.mods.fml.common.Optional;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
     public static final NavigatorHeatmapLayer INSTANCE = new NavigatorHeatmapLayer();
     public volatile MapOverlayModel model = ClientMapOverlayState.emptyModel();
-    public final LongOpenHashSet batchAnchorKeys = new LongOpenHashSet();
-    public final LongOpenHashSet visibleCellKeys = new LongOpenHashSet();
 
     public NavigatorHeatmapLayer() {
         super(new HeatmapButton());
@@ -59,8 +55,6 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
     @Override
     public Collection<? extends ILocationProvider> generateVisibleLocations(int minBlockX, int minBlockZ, int maxBlockX,
         int maxBlockZ, int dimension) {
-        batchAnchorKeys.clear();
-        visibleCellKeys.clear();
         MapOverlayControls.requestWeakSnapshot();
         List<CellLocation> locations = new ArrayList<>();
         Long2ObjectOpenHashMap<List<MapOverlayCell>> tiles = model.cellsByTile.get(dimension);
@@ -96,7 +90,6 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
     private void addVisibleTile(List<CellLocation> locations, List<MapOverlayCell> tileCells, int minBlockX,
         int minBlockZ, int maxBlockX, int maxBlockZ) {
-        boolean hasAnchor = false;
         for (MapOverlayCell cell : tileCells) {
             int cellMinX = cell.getChunkX() << 4;
             int cellMinZ = cell.getChunkZ() << 4;
@@ -106,11 +99,6 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
                 continue;
             }
             locations.add(new CellLocation(this, cell));
-            visibleCellKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
-            if (!hasAnchor) {
-                batchAnchorKeys.add(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()));
-                hasAnchor = true;
-            }
         }
     }
 
@@ -144,53 +132,6 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
         }
     }
 
-    public boolean isBatchAnchor(CellLocation location) {
-        return batchAnchorKeys.contains(MapOverlayModel.key(location.getChunkX(), location.getChunkZ()));
-    }
-
-    public void drawTile(CellLocation anchor, double centerX, double centerZ) {
-        List<MapOverlayCell> tileCells = model.getCellsInTile(
-            anchor.getDimensionId(),
-            Math.floorDiv(anchor.getChunkX(), MapOverlayModel.TILE_CHUNKS),
-            Math.floorDiv(anchor.getChunkZ(), MapOverlayModel.TILE_CHUNKS));
-        if (tileCells.isEmpty()) {
-            return;
-        }
-
-        double blockScale = anchor.stepScale;
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        try {
-            Tessellator tessellator = Tessellator.instance;
-            tessellator.startDrawingQuads();
-            for (MapOverlayCell cell : tileCells) {
-                if (!visibleCellKeys.contains(MapOverlayModel.key(cell.getChunkX(), cell.getChunkZ()))) {
-                    continue;
-                }
-                double cellCenterX = centerX + ((cell.getChunkX() << 4) + 8 - anchor.getBlockX()) * blockScale;
-                double cellCenterZ = centerZ + ((cell.getChunkZ() << 4) + 8 - anchor.getBlockZ()) * blockScale;
-                double minX = cellCenterX - 8.0D * blockScale;
-                double maxX = cellCenterX + 8.0D * blockScale;
-                double minZ = cellCenterZ - 8.0D * blockScale;
-                double maxZ = cellCenterZ + 8.0D * blockScale;
-                tessellator.setColorRGBA_I(cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
-                tessellator.addVertex(minX, minZ, 0.0D);
-                tessellator.addVertex(maxX, minZ, 0.0D);
-                tessellator.addVertex(maxX, maxZ, 0.0D);
-                tessellator.addVertex(minX, maxZ, 0.0D);
-                if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
-                    XaeroOverlayRenderer.addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
-                }
-            }
-            tessellator.draw();
-        } finally {
-            GL11.glPopAttrib();
-        }
-    }
-
     public static class HeatmapButton extends ButtonManager {
 
         public HeatmapButton() {
@@ -214,7 +155,6 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
         public final int dimensionId;
         public final int chunkX;
         public final int chunkZ;
-        public double stepScale = 1.0D;
 
         public CellLocation(NavigatorHeatmapLayer owner, MapOverlayCell cell) {
             this.owner = owner;
@@ -230,12 +170,22 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
 
         @Override
         public double getBlockX() {
-            return (chunkX << 4) + 8.0D;
+            return (chunkX << 4) + 0.5D;
         }
 
         @Override
         public double getBlockZ() {
-            return (chunkZ << 4) + 8.0D;
+            return (chunkZ << 4) + 0.5D;
+        }
+
+        @Override
+        public int getChunkX() {
+            return chunkX;
+        }
+
+        @Override
+        public int getChunkZ() {
+            return chunkZ;
         }
 
         public MapOverlayCell getCell() {
@@ -250,39 +200,58 @@ public class NavigatorHeatmapLayer extends InteractableLayerManager {
         public CellRenderStep(NavigatorHeatmapLayer owner, CellLocation location) {
             super(location);
             this.owner = owner;
-            setSize(16.0D);
         }
 
         @Override
-        public void draw(double x, double y, float drawScale, double zoom) {
-            if (location.getCell() == null || !owner.isBatchAnchor(location)) {
+        public void preRender(double topX, double topY, float drawScale, double zoom) {
+            setOffset(isJourneyMap ? -0.5D * blockSize : 0.0D);
+        }
+
+        @Override
+        public void draw(double topX, double topY, float drawScale, double zoom) {
+            MapOverlayCell cell = location.getCell();
+            if (cell == null) {
                 return;
             }
-            location.stepScale = isJourneyMap ? blockSize : 1.0D;
-            owner.drawTile(location, x, y);
+            double cellWidth = getAdjustedWidth();
+            double cellHeight = getAdjustedHeight();
+            DrawUtils.drawRect(topX, topY, cellWidth, cellHeight, cell.getColor(), ColorUtils.alpha(cell.getOpacity()));
+            if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
+                DrawUtils.drawHollowRect(
+                    topX,
+                    topY,
+                    cellWidth,
+                    cellHeight,
+                    cell.getTicketSourceColor(),
+                    ColorUtils.alpha(Math.max(ColorUtils.TICKET_MINIMUM_OPACITY, cell.getOpacity())),
+                    Math.min(1.25D, Math.min(cellWidth, cellHeight) * 0.16D));
+            }
+            if (!isMinimap()) {
+                ChunkLabelRenderer.draw(
+                    cell.getLabel(),
+                    topX + cellWidth * 0.5D,
+                    topY + cellHeight * 0.5D,
+                    cellWidth,
+                    isXaero ? zoom : 1.0D);
+            }
         }
 
         @Override
         public void getTooltip(List<String> tooltip) {
-            // FlameChunk draws its own bounded tooltip for every map integration.
+            // FlameChunk draws a vanilla hovering-text tooltip instead so every map integration looks identical.
         }
 
         @Override
         public void drawCustomTooltip(FontRenderer fontRenderer, int mouseX, int mouseY, int displayWidth,
             int displayHeight) {
-            MapOverlayCell cell = location.getCell();
-            int chunkX = location.getChunkX();
-            int chunkZ = location.getChunkZ();
-            MapOverlayTooltip.draw(mouseX, mouseY, cell, chunkX, chunkZ, displayWidth, displayHeight);
-        }
-
-        @Override
-        public boolean isMouseOver(int mouseX, int mouseY) {
-            double halfWidth = getAdjustedWidth() * 0.5D;
-            double halfHeight = getAdjustedHeight() * 0.5D;
-            return mouseX >= getX() - halfWidth && mouseX <= getX() + halfWidth
-                && mouseY >= getY() - halfHeight
-                && mouseY <= getY() + halfHeight;
+            MapOverlayTooltip.draw(
+                mouseX,
+                mouseY,
+                location.getCell(),
+                location.getChunkX(),
+                location.getChunkZ(),
+                displayWidth,
+                displayHeight);
         }
 
         @Override

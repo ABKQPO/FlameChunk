@@ -251,28 +251,35 @@ public class MapOverlayControls {
         }
     }
 
-    public static String scanMenuLabel() {
+    public static String scanButtonLabel() {
         if (isScanning()) {
-            int percent = Math.round(scanProgress() * 100.0F);
-            return StatCollector.translateToLocalFormatted("flamechunk.client.stop.progress", percent);
+            return StatCollector
+                .translateToLocalFormatted("flamechunk.client.stop.progress", Math.round(scanProgress() * 100.0F));
         }
         return StatCollector
             .translateToLocal(hasPendingScan() ? "flamechunk.client.scan.pending" : "flamechunk.client.scan");
+    }
+
+    public static String scanMenuLabel() {
+        return scanButtonLabel();
+    }
+
+    public static int scanButtonState() {
+        if (isScanning()) {
+            return 1000 + Math.round(scanProgress() * 100.0F);
+        }
+        return hasPendingScan() ? -1 : 0;
     }
 
     public static void updateScanButton(Iterable<GuiButton> buttons, int buttonId) {
         if (buttons == null) {
             return;
         }
-        boolean scanning = isScanning();
-        boolean pending = hasPendingScan();
-        String label = StatCollector.translateToLocal(
-            scanning ? "flamechunk.client.stop"
-                : pending ? "flamechunk.client.scan.pending" : "flamechunk.client.scan");
+        String label = scanButtonLabel();
         for (GuiButton button : buttons) {
             if (button.id == buttonId) {
                 button.displayString = label;
-                button.enabled = scanning || !pending;
+                button.enabled = isScanning() || !hasPendingScan();
                 return;
             }
         }

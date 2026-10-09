@@ -1,6 +1,7 @@
 package com.hfstudio.flamechunk.client.integration;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
@@ -23,18 +24,18 @@ import com.gtnewhorizons.navigator.api.model.layers.UniversalLayerRenderer;
 public class NavigatorActionLayer extends LayerManager {
 
     public static final NavigatorActionLayer SCAN = new NavigatorActionLayer(
-        "flamechunk.client.map.scan",
+        MapOverlayControls::scanButtonLabel,
         new ResourceLocation("flamechunk", "textures/icons/scan.png"),
         MapOverlayControls::toggleScan);
     public static final NavigatorActionLayer CLEAR = new NavigatorActionLayer(
-        "flamechunk.client.map.clear",
+        () -> StatCollector.translateToLocal("flamechunk.client.map.clear"),
         new ResourceLocation("flamechunk", "textures/icons/clear.png"),
         MapOverlayControls::clear);
 
     public static final List<NavigatorActionLayer> BUTTONS = List.of(SCAN, CLEAR);
 
-    private NavigatorActionLayer(String textKey, ResourceLocation icon, Runnable action) {
-        super(new ActionButton(textKey, icon, action));
+    private NavigatorActionLayer(Supplier<String> text, ResourceLocation icon, Runnable action) {
+        super(new ActionButton(text, icon, action));
     }
 
     @Override
@@ -48,12 +49,12 @@ public class NavigatorActionLayer extends LayerManager {
     /** Navigator button that invokes a command without toggling a rendered layer. */
     public static class ActionButton extends ButtonManager {
 
-        private final String textKey;
+        private final Supplier<String> text;
         private final ResourceLocation icon;
         private final Runnable action;
 
-        public ActionButton(String textKey, ResourceLocation icon, Runnable action) {
-            this.textKey = textKey;
+        public ActionButton(Supplier<String> text, ResourceLocation icon, Runnable action) {
+            this.text = text;
             this.icon = icon;
             this.action = action;
         }
@@ -65,7 +66,7 @@ public class NavigatorActionLayer extends LayerManager {
 
         @Override
         public String getButtonText() {
-            return StatCollector.translateToLocal(textKey);
+            return text.get();
         }
 
         @Override

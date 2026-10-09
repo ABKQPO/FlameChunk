@@ -52,6 +52,34 @@ public class NavigatorMapBridge {
         return Mods.Navigator.isModLoaded() && navigatorXaeroWorldMapLayerActive();
     }
 
+    public static boolean isXaeroWorldMapHeatmapVisible() {
+        return !ownsXaeroWorldMap() || isXaeroWorldMapLayerActive();
+    }
+
+    public static boolean isJourneyMapHeatmapVisible() {
+        return !ownsJourneyMap() || isJourneyMapLayerActive();
+    }
+
+    public static int xaeroScanButtonSlot() {
+        return Mods.Navigator.isModLoaded() ? navigatorXaeroScanButtonSlot() : -1;
+    }
+
+    public static int xaeroButtonCount() {
+        return Mods.Navigator.isModLoaded() ? navigatorXaeroButtonCount() : 0;
+    }
+
+    @Optional.Method(modid = "navigator")
+    public static int navigatorXaeroScanButtonSlot() {
+        return NavigatorApi.getEnabledButtons(SupportedMods.XaeroWorldMap)
+            .indexOf(NavigatorActionLayer.SCAN.getButtonManager());
+    }
+
+    @Optional.Method(modid = "navigator")
+    public static int navigatorXaeroButtonCount() {
+        return NavigatorApi.getEnabledButtons(SupportedMods.XaeroWorldMap)
+            .size();
+    }
+
     @Optional.Method(modid = "navigator")
     public static void registerNavigatorLayer() {
         NavigatorApi.registerLayerManager(NavigatorHeatmapLayer.INSTANCE);

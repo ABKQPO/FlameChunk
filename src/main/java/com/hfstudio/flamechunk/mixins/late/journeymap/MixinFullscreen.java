@@ -17,6 +17,7 @@ import com.hfstudio.flamechunk.client.config.ClientConfig;
 import com.hfstudio.flamechunk.client.integration.JourneyMap5OverlayRenderer;
 import com.hfstudio.flamechunk.client.integration.MapControlIds;
 import com.hfstudio.flamechunk.client.integration.MapOverlayControls;
+import com.hfstudio.flamechunk.client.integration.MapOverlayTooltip;
 import com.hfstudio.flamechunk.client.integration.MapScanProgressRenderer;
 
 import journeymap.client.render.draw.DrawStep;
@@ -55,6 +56,7 @@ public abstract class MixinFullscreen {
 
     @Inject(method = "drawScreen", at = @At("HEAD"), remap = true)
     private void flamechunk$updateScanControl(int width, int height, float f, CallbackInfo callbackInfo) {
+        MapOverlayTooltip.clearPending();
         Fullscreen screen = (Fullscreen) (Object) this;
         MapOverlayControls.updateScanButton(screen.getButtonList(), MapControlIds.JOURNEYMAP_SCAN);
         flamechunk$updateButtonDrag(screen, width, height);
@@ -66,9 +68,19 @@ public abstract class MixinFullscreen {
         int scanX = JourneyMap5OverlayRenderer.buttonX(screen, 0);
         int scanY = JourneyMap5OverlayRenderer.buttonY(screen, 0);
         MapScanProgressRenderer.render(scanX, scanY - 24, scanX, scanY, 76, 20);
-        if ((chat == null || chat.isHidden()) && !flamechunk$hasWaypointHover()) {
+        boolean chatOpen = chat != null && !chat.isHidden();
+        MapOverlayTooltip.setContextMenuOpen(chatOpen || flamechunk$hasWaypointHover());
+        if (!chatOpen && !flamechunk$hasWaypointHover()) {
             JourneyMap5OverlayRenderer.renderTooltip(screen, gridRenderer, mx, my);
         }
+        // Drawn last so the tooltip sits above JourneyMap's toolbars and the waypoint layer.
+        MapOverlayTooltip.flush();
+    }
+
+    @Inject(method = "onGuiClosed", at = @At("RETURN"), remap = true)
+    private void flamechunk$resetTooltip(CallbackInfo callbackInfo) {
+        MapOverlayTooltip.setContextMenuOpen(false);
+        MapOverlayTooltip.clearPending();
     }
 
     @Unique

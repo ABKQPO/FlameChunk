@@ -1,5 +1,6 @@
 package com.hfstudio.flamechunk.client.integration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
@@ -11,14 +12,55 @@ import net.minecraft.world.World;
 import org.lwjgl.opengl.GL11;
 
 import com.hfstudio.flamechunk.client.config.ClientConfig;
+import com.hfstudio.flamechunk.client.render.ChunkLabelRenderer;
 import com.hfstudio.flamechunk.client.render.ColorUtils;
 import com.hfstudio.flamechunk.common.data.WeakChunkSnapshot;
 import com.hfstudio.flamechunk.common.tick.TickCategory;
 
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 public class XaeroOverlayRenderer {
+
+    private static final List<MapOverlayCell> LABEL_CELLS = new ArrayList<>();
+    private static final DoubleArrayList LABEL_BOUNDS = new DoubleArrayList();
+
+    private static void beginLabels() {
+        LABEL_CELLS.clear();
+        LABEL_BOUNDS.clear();
+    }
+
+    private static void queueLabel(MapOverlayCell cell, double minX, double minZ, double maxX, double maxZ) {
+        LABEL_CELLS.add(cell);
+        LABEL_BOUNDS.add(minX);
+        LABEL_BOUNDS.add(minZ);
+        LABEL_BOUNDS.add(maxX);
+        LABEL_BOUNDS.add(maxZ);
+    }
+
+    private static void flushLabels(double unitsToPixels) {
+        if (Minecraft.getMinecraft().currentScreen == null) {
+            // Minimaps are far too cramped for per-chunk text.
+            beginLabels();
+            return;
+        }
+        for (int index = 0; index < LABEL_CELLS.size(); index++) {
+            int offset = index * 4;
+            double minX = LABEL_BOUNDS.getDouble(offset);
+            double minZ = LABEL_BOUNDS.getDouble(offset + 1);
+            double maxX = LABEL_BOUNDS.getDouble(offset + 2);
+            double maxZ = LABEL_BOUNDS.getDouble(offset + 3);
+            ChunkLabelRenderer.draw(
+                LABEL_CELLS.get(index)
+                    .getLabel(),
+                (minX + maxX) * 0.5D,
+                (minZ + maxZ) * 0.5D,
+                maxX - minX,
+                unitsToPixels);
+        }
+        beginLabels();
+    }
 
     public static void render(double cameraX, double cameraZ, double scale) {
         render(cameraX, cameraZ, scale, -1, -1);
@@ -106,6 +148,7 @@ public class XaeroOverlayRenderer {
         try {
             Tessellator tessellator = Tessellator.instance;
             tessellator.startDrawingQuads();
+            beginLabels();
             for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                 for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
                     List<MapOverlayCell> cells = tiles.get(MapOverlayModel.key(tileX, tileZ));
@@ -130,10 +173,12 @@ public class XaeroOverlayRenderer {
                         if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
                             addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
                         }
+                        queueLabel(cell, minX, minZ, maxX, maxZ);
                     }
                 }
             }
             tessellator.draw();
+            flushLabels(scale);
         } finally {
             GL11.glPopAttrib();
         }
@@ -148,7 +193,9 @@ public class XaeroOverlayRenderer {
             || displayWidth <= 0
             || displayHeight <= 0
             || displayMouseX < 0
-            || displayMouseY < 0) {
+            || displayMouseY < 0
+            || displayMouseX >= displayWidth
+            || displayMouseY >= displayHeight) {
             return;
         }
         MapOverlayModel model = ClientMapOverlayState.get();
@@ -214,6 +261,7 @@ public class XaeroOverlayRenderer {
             long tileHeight = (long) maxTileZ - minTileZ + 1L;
             Tessellator tessellator = Tessellator.instance;
             tessellator.startDrawingQuads();
+            beginLabels();
             if (tileWidth > 0L && tileHeight > 0L && tileWidth * tileHeight <= tiles.size()) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                     for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
@@ -255,6 +303,7 @@ public class XaeroOverlayRenderer {
                 }
             }
             tessellator.draw();
+            flushLabels(1.0D);
         } finally {
             GL11.glPopMatrix();
             GL11.glPopAttrib();
@@ -280,6 +329,7 @@ public class XaeroOverlayRenderer {
             if (ClientConfig.showLoaderSources && cell.getTicketSourceCode() > 0) {
                 addTicketOutline(tessellator, cell, minX, maxX, minZ, maxZ);
             }
+            queueLabel(cell, minX, minZ, maxX, maxZ);
         }
     }
 
