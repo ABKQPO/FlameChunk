@@ -13,8 +13,6 @@ public class WeakChunkSnapshotHandler implements IMessageHandler<WeakChunkSnapsh
     public IMessage onMessage(WeakChunkSnapshotPacket message, MessageContext context) {
         if (context.side.isClient() && message.isValid()) {
             FlameChunk.proxy.handleWeakChunkSnapshot(message);
-        } else if (context.side.isClient()) {
-            FlameChunk.LOG.warn("Rejected invalid FlameChunk weak chunk snapshot");
         }
         return null;
     }

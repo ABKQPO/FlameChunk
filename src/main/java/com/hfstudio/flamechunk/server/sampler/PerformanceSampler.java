@@ -440,7 +440,7 @@ public class PerformanceSampler {
             Set<NetworkManager> delivered = snapshotPublisher
                 .publish(snapshot, true, lastSnapshotReportId, subscriptions.current(), objectHotspots);
             if (droppedDimensions > 0 || droppedChunks > 0) {
-                FlameChunk.LOG.warn(
+                FlameChunk.LOG.debug(
                     "FlameChunk scan dropped {} dimensions and {} chunks because configured bounds were reached",
                     droppedDimensions,
                     droppedChunks);
@@ -718,7 +718,7 @@ public class PerformanceSampler {
             && !subscriptions.contains(player)) {
             sendStatus(player, ScanProgressPacket.SCAN_INTERRUPTED);
         }
-        FlameChunk.LOG.warn(
+        FlameChunk.LOG.debug(
             "Discarded a stalled FlameChunk scan after {} seconds without a server tick",
             (now - lastServerTickNanos) / 1000000000L);
         feedback = null;

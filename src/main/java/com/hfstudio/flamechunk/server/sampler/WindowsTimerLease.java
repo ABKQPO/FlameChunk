@@ -18,7 +18,7 @@ public class WindowsTimerLease implements AutoCloseable {
             int result = WinMM.begin.invokeInt(new Object[] { PERIOD_MILLIS });
             acquired = result == 0;
             if (!acquired) {
-                FlameChunk.LOG.warn("Windows timer request failed with status {}", result);
+                FlameChunk.LOG.debug("Windows timer request failed with status {}", result);
             }
             return acquired;
         } catch (RuntimeException | LinkageError exception) {
@@ -36,7 +36,7 @@ public class WindowsTimerLease implements AutoCloseable {
         try {
             int result = WinMM.end.invokeInt(new Object[] { PERIOD_MILLIS });
             if (result != 0) {
-                FlameChunk.LOG.warn("Windows timer release failed with status {}", result);
+                FlameChunk.LOG.debug("Windows timer release failed with status {}", result);
             }
         } catch (RuntimeException | LinkageError exception) {
             FlameChunk.LOG.warn("Unable to release the Windows sampling timer", exception);

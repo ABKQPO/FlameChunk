@@ -17,8 +17,6 @@ public class SnapshotHandler implements IMessageHandler<SnapshotPacket, IMessage
             } catch (RuntimeException exception) {
                 FlameChunk.LOG.warn("Rejected snapshot packet", exception);
             }
-        } else if (context.side.isClient()) {
-            FlameChunk.LOG.warn("Rejected invalid FlameChunk snapshot packet");
         }
         return null;
     }

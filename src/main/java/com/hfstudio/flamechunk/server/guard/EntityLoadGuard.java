@@ -46,7 +46,7 @@ public class EntityLoadGuard {
         for (List<?> section : chunk.entityLists) {
             for (Entity entity : entities(section)) {
                 if (++inspectedEntities > ServerConfig.entityProtectionMaximumInspected) {
-                    FlameChunk.LOG.warn(
+                    FlameChunk.LOG.debug(
                         "Entity load protection skipped dimension {} chunk ({}, {}): inspection limit {} exceeded",
                         chunk.worldObj.provider.dimensionId,
                         chunk.xPosition,
@@ -109,7 +109,7 @@ public class EntityLoadGuard {
                 }
             }
         }
-        FlameChunk.LOG.warn(
+        FlameChunk.LOG.debug(
             "Entity load protection inspected dimension {} chunk ({}, {}): {} entities across {} selected types, removed {} entities ({})",
             chunk.worldObj.provider.dimensionId,
             chunk.xPosition,
@@ -168,7 +168,7 @@ public class EntityLoadGuard {
             }
             int chunkX = unpackX(entry.getLongKey());
             int chunkZ = unpackZ(entry.getLongKey());
-            FlameChunk.LOG.warn(
+            FlameChunk.LOG.debug(
                 "High entity load in dimension {} chunk ({}, {}): {} entities ({})",
                 world.provider.dimensionId,
                 chunkX,

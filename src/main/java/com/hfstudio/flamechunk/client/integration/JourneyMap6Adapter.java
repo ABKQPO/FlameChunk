@@ -54,7 +54,6 @@ public class JourneyMap6Adapter implements IClientPlugin, MapOverlaySink {
         api = value;
         MapOverlayApi.register(this);
         publish(ClientMapOverlayState.get());
-        FlameChunk.LOG.info("JourneyMap 6 heatmap integration enabled");
         MapOverlayControls.requestWeakSnapshot();
     }
 

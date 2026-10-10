@@ -24,7 +24,6 @@ public class ScanRequestHandler implements IMessageHandler<ScanRequestPacket, IM
             return null;
         }
         if (!message.isValid()) {
-            FlameChunk.LOG.warn("Rejected invalid FlameChunk scan request packet");
             if (message.isProtocolMismatch()) {
                 FlameChunk.network.sendTo(
                     ScanProgressPacket.forStatus(ScanProgressPacket.PROTOCOL_MISMATCH),

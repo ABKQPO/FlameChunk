@@ -12,13 +12,12 @@ import com.hfstudio.flamechunk.server.sampler.PerformanceSampler;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
-import cpw.mods.fml.relauncher.Side;
 
 public class UnknownStackDetailsRequestHandler implements IMessageHandler<UnknownStackDetailsRequestPacket, IMessage> {
 
     @Override
     public IMessage onMessage(UnknownStackDetailsRequestPacket message, MessageContext context) {
-        if (context.side != Side.SERVER || context.getServerHandler() == null) {
+        if (!context.side.isServer() || context.getServerHandler() == null) {
             return null;
         }
         if (!message.isValid()) {

@@ -130,7 +130,7 @@ public class WeakChunkInspector {
             .isEmpty()) {
             return;
         }
-        FlameChunk.LOG.info(
+        FlameChunk.LOG.debug(
             "Weak chunk scan completed for dimension {}: {} loaded chunks, {} high-entity weak chunks{}",
             world.provider.dimensionId,
             loadedChunks,
@@ -138,7 +138,7 @@ public class WeakChunkInspector {
                 .size(),
             snapshot.isTruncated() ? " (entity or chunk inspection cap reached)" : "");
         for (ChunkEntry entry : snapshot.getChunks()) {
-            FlameChunk.LOG.warn(
+            FlameChunk.LOG.debug(
                 "Weak chunk in dimension {} at ({}, {}): {} entities, top types {}, claim {}",
                 world.provider.dimensionId,
                 entry.getChunkX(),

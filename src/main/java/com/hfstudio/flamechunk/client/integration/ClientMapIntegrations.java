@@ -20,9 +20,6 @@ public class ClientMapIntegrations {
         for (MapOverlaySink integration : MapOverlayApi.registeredIntegrations()) {
             register(integration);
         }
-        if (Mods.JourneyMap5.isModLoaded()) {
-            FlameChunk.LOG.info("JourneyMap 5 heatmap integration enabled");
-        }
     }
 
     public void publish(MapOverlayModel model) {

@@ -13,8 +13,6 @@ public class ClearSnapshotHandler implements IMessageHandler<ClearSnapshotPacket
     public IMessage onMessage(ClearSnapshotPacket message, MessageContext context) {
         if (context.side.isClient() && message.isValid()) {
             FlameChunk.proxy.handleClear(message);
-        } else if (context.side.isClient()) {
-            FlameChunk.LOG.warn("Rejected invalid FlameChunk clear packet");
         }
         return null;
     }

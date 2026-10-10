@@ -17,8 +17,6 @@ public class ScanProgressHandler implements IMessageHandler<ScanProgressPacket, 
             } else {
                 FlameChunk.proxy.handleProgress(message);
             }
-        } else if (context.side.isClient()) {
-            FlameChunk.LOG.warn("Rejected invalid FlameChunk progress packet");
         }
         return null;
     }
