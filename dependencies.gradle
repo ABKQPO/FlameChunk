@@ -16,7 +16,7 @@ configurations.journeyMap6Launch {
 dependencies {
     navigatorMapLaunch('com.github.GTNewHorizons:Navigator:1.1.10:dev') { transitive = false }
 
-    shadowImplementation("com.github.luben:zstd-jni:1.4.9-5")
+    shadowImplementation("com.github.luben:zstd-jni:1.5.7-5")
     shadowImplementation("net.java.dev.jna:jna:5.12.1")
 
     compileOnly("com.github.GTNewHorizons:ServerUtilities:2.4.14:dev")
